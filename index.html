@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Engine Simulation Platform</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+
+<body>
+    <nav id="sidebar" aria-label="Primary navigation">
+        <!-- Header / Toggle -->
+        <div class="rail-header">
+            <div class="logo-area">
+                <span class="logo-text">EngineSim</span>
+            </div>
+            <button id="toggle-btn" class="toggle-btn" aria-label="Collapse sidebar" title="Collapse">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+                </svg>
+            </button>
+        </div>
+
+        <!-- Search & Profile -->
+        <div class="rail-controls">
+            <div class="search-box">
+                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <circle cx="11" cy="11" r="8"></circle>
+                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                </svg>
+                <input type="text" placeholder="Search..." aria-label="Search">
+            </div>
+            <div class="user-profile">
+                <div class="avatar">RR</div>
+                <div class="user-info">
+                    <span class="user-name">Saptarshi Samanta</span>
+                    <span class="user-role">Creator</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Engine List -->
+        <ul id="engine-list">
+            <!-- Engine items populated by JS -->
+        </ul>
+    </nav>
+
+    <div id="main-content">
+        <iframe id="engine-frame" src="" title="Engine Simulation"></iframe>
+    </div>
+
+    <script src="engines.js"></script>
+    <script src="js/main.js"></script>
+</body>
+
+</html>
