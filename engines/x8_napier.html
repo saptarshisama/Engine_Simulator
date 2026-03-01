@@ -91,7 +91,8 @@
                 ctx.strokeStyle = '#0d2200'; ctx.lineWidth = 1;
                 for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
                 if (hist.length < 2) return;
-                [['torque', '#ffaa00', 1800], ['hp', '#00aaff', 1800]].forEach(([k, c, mx]) => {
+                [['torque', '#ffaa00', 1800], ['hp', '#00aaff', 1800]].forEach((def) => {
+                    const k = def[0], c = def[1], mx = def[2];
                     ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath();
                     hist.forEach((p, i) => { const x = (i / 180) * w, y = h - (p[k] / mx) * h; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
                 });
@@ -406,7 +407,7 @@
         });
 
         const dyno = new DynoGraph('dyno-canvas');
-        document.getElementById('loading').style.opacity = 0;
+        document.getElementById('loading').style.display = 'none';
 
         let crankAngle = 0, lastTime = 0;
 

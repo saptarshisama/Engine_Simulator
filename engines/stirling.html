@@ -94,7 +94,8 @@
                 ctx.strokeStyle = '#0d2200'; ctx.lineWidth = 1;
                 for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
                 if (hist.length < 2) return;
-                [['t', '#ffaa00', 40], ['hp', '#00aaff', 40]].forEach(([k, c, mx]) => {
+                [['t', '#ffaa00', 40], ['hp', '#00aaff', 40]].forEach((def) => {
+                    const k = def[0], c = def[1], mx = def[2];
                     ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath();
                     hist.forEach((p, i) => { const x = (i / 180) * w, y = h - (p[k] / mx) * h; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
                 });
@@ -166,8 +167,8 @@
         const LD = 7.0;   // displacer con-rod length
 
         /* ── Baseplate ── */
-        S(scene.add(new THREE.Mesh(new THREE.BoxGeometry(22, .8, 9), new THREE.MeshStandardMaterial({ color: 0xb4b4b4, roughness: .3, metalness: .75 }))) || scene.children[scene.children.length - 1]);
-        const base = scene.children[scene.children.length - 1];
+        const base = S(new THREE.Mesh(new THREE.BoxGeometry(22, .8, 9), new THREE.MeshStandardMaterial({ color: 0xb4b4b4, roughness: .3, metalness: .75 })));
+        scene.add(base);
         base.position.set(-1, 0, 0);
         [[-9.5, -4], [9.5, -4], [-9.5, 4], [9.5, 4]].forEach(([x, z]) => {
             const f = S(new THREE.Mesh(new THREE.CylinderGeometry(.7, .8, .5, 16), MAT.rubber));
@@ -285,8 +286,10 @@
         lampG.add(S(new THREE.Mesh(new THREE.SphereGeometry(1.0, 24, 20), MAT.glassBulb)));
         const oil = new THREE.Mesh(new THREE.SphereGeometry(.85, 16, 12, 0, Math.PI * 2, 0, Math.PI * .55), new THREE.MeshStandardMaterial({ color: 0xddaa55, roughness: .1, metalness: 0, transparent: true, opacity: .6 }));
         oil.rotation.x = Math.PI; oil.position.y = .05; lampG.add(oil);
-        lampG.add(Object.assign(S(new THREE.Mesh(new THREE.CylinderGeometry(.45, .5, .5, 16), MAT.gold)), { position: new THREE.Vector3(0, .9, 0) }));
-        lampG.add(Object.assign(new THREE.Mesh(new THREE.CylinderGeometry(.1, .1, .8, 8), new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 1, metalness: 0 })), { position: new THREE.Vector3(0, 1.4, 0) }));
+        const lampRing = S(new THREE.Mesh(new THREE.CylinderGeometry(.45, .5, .5, 16), MAT.gold));
+        lampRing.position.set(0, .9, 0); lampG.add(lampRing);
+        const lampWick = new THREE.Mesh(new THREE.CylinderGeometry(.1, .1, .8, 8), new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 1, metalness: 0 }));
+        lampWick.position.set(0, 1.4, 0); lampG.add(lampWick);
         const flameMesh = new THREE.Mesh(new THREE.ConeGeometry(.12, .4, 8), MAT.flame);
         flameMesh.position.set(0, 1.85, 0); lampG.add(flameMesh);
 
@@ -303,7 +306,7 @@
         });
 
         const dyno = new DynoGraph('dyno-canvas');
-        document.getElementById('loading').style.opacity = 0;
+        document.getElementById('loading').style.display = 'none';
 
         /* ─── Animation helpers ─── */
         // Update a CapsuleGeometry rod mesh to span between two world points

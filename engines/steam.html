@@ -85,7 +85,8 @@
                 const { ctx, w, h, hist } = this; ctx.clearRect(0, 0, w, h); ctx.strokeStyle = '#0d2200'; ctx.lineWidth = 1;
                 for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
                 if (hist.length < 2) return;
-                [['t', '#ffaa00', 500], ['hp', '#00aaff', 500]].forEach(([k, c, mx]) => {
+                [['t', '#ffaa00', 500], ['hp', '#00aaff', 500]].forEach((def) => {
+                    const k = def[0], c = def[1], mx = def[2];
                     ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath();
                     hist.forEach((p, i) => { const x = (i / 180) * w, y = h - (p[k] / mx) * h; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
                 });
@@ -116,7 +117,8 @@
         sun.shadow.camera.left = -35; sun.shadow.camera.right = 35;
         sun.shadow.camera.top = 35; sun.shadow.camera.bottom = -35;
         sun.shadow.camera.far = 100; scene.add(sun);
-        scene.add(Object.assign(new THREE.DirectionalLight(0x8899bb, .9), { position: new THREE.Vector3(-12, 8, -8) }));
+        const fill = new THREE.DirectionalLight(0x8899bb, .9);
+        fill.position.set(-12, 8, -8); scene.add(fill);
 
         const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0x0f0e0a, roughness: .95, metalness: .05 }));
         floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
@@ -184,8 +186,9 @@
         scene.add(flywheelGroup);
 
         // Outer steel rim
-        S(flywheelGroup.add(new THREE.Mesh(new THREE.TorusGeometry(6.8, .6, 16, 72), M.steel)) || flywheelGroup.children[0]);
-        const fwRim = flywheelGroup.children[0]; if (fwRim.isMesh) { fwRim.rotation.x = Math.PI / 2; }
+        const fwRim = S(new THREE.Mesh(new THREE.TorusGeometry(6.8, .6, 16, 72), M.steel));
+        flywheelGroup.add(fwRim);
+        if (fwRim.isMesh) { fwRim.rotation.x = Math.PI / 2; }
 
         // 8 Red spokes (these are FLAT in the flywheel plane)
         for (let i = 0; i < 8; i++) {
@@ -280,8 +283,9 @@
         const gFace = new THREE.Mesh(new THREE.CircleGeometry(.55, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .3 }));
         gFace.rotation.y = -Math.PI / 2; gFace.position.set(CYL_X - 5.4, CYL_Y + 2, 0); scene.add(gFace);
         // Drain valve
-        S(scene.add(new THREE.Mesh(new THREE.SphereGeometry(.3, 12, 10), M.brass)) || scene.children[scene.children.length - 1]);
-        scene.children[scene.children.length - 1].position.set(CYL_X + 3, CYL_Y - 5, 0);
+        const drainValve = S(new THREE.Mesh(new THREE.SphereGeometry(.3, 12, 10), M.brass));
+        scene.add(drainValve);
+        drainValve.position.set(CYL_X + 3, CYL_Y - 5, 0);
 
         /* ── Piston (inside cylinder) ── */
         const piston = S(new THREE.Mesh(new THREE.CylinderGeometry(CYL_R - .18, CYL_R - .18, 1.0, 22), M.steel));
@@ -311,9 +315,11 @@
         govGroup.position.set(6, 5.5, -3.5); scene.add(govGroup);
         // vertical shaft
         govGroup.add(S(new THREE.Mesh(new THREE.CylinderGeometry(.18, .18, 7, 10), M.steel)));
-        govGroup.add(Object.assign(S(new THREE.Mesh(new THREE.CylinderGeometry(.8, 1, .5, 16), M.green)), { position: new THREE.Vector3(0, -3.5, 0) }));
+        const gLower = S(new THREE.Mesh(new THREE.CylinderGeometry(.8, 1, .5, 16), M.green));
+        gLower.position.set(0, -3.5, 0); govGroup.add(gLower);
         // bevel gear
-        govGroup.add(Object.assign(S(new THREE.Mesh(new THREE.CylinderGeometry(.65, .85, .4, 16), M.brass)), { position: new THREE.Vector3(0, 2.3, 0) }));
+        const bGear = S(new THREE.Mesh(new THREE.CylinderGeometry(.65, .85, .4, 16), M.brass));
+        bGear.position.set(0, 2.3, 0); govGroup.add(bGear);
         // spinning arm group (rotates with RPM)
         const govArmGroup = new THREE.Group();
         govGroup.add(govArmGroup);
@@ -340,7 +346,7 @@
         });
 
         const dyno = new DynoGraph('dyno-canvas');
-        document.getElementById('loading').style.opacity = 0;
+        document.getElementById('loading').style.display = 'none';
 
         /* ── Animation ── */
         let crankAngle = 0, lastTime = 0, govAngle = 0;
