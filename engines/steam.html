@@ -4,14 +4,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Steam Engine Simulation</title>
+    <title>Steam Engine — Stationary Single-Cylinder</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #050505;
-            color: #eee;
-            font-family: 'Courier New', monospace;
+            background: #0a0a0a;
         }
 
         #info {
@@ -20,19 +18,22 @@
             width: 100%;
             text-align: center;
             pointer-events: none;
-            text-shadow: 0 0 5px #000;
             z-index: 10;
+            font-family: 'Courier New', monospace;
         }
 
         #info h1 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #33ff00;
             letter-spacing: 2px;
+            margin: 0;
+            text-shadow: 0 0 8px #33ff00;
         }
 
         #info p {
             color: #1ea300;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            margin: 4px 0 0;
         }
 
         #loading {
@@ -40,7 +41,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 1.5rem;
+            font-family: monospace;
+            font-size: 1.4rem;
             color: #33ff00;
         }
 
@@ -48,11 +50,11 @@
             position: absolute;
             bottom: 20px;
             right: 20px;
-            width: 340px;
-            height: 160px;
-            background: rgba(0, 0, 0, 0.85);
+            width: 300px;
+            height: 140px;
+            background: rgba(0, 0, 0, 0.88);
             border: 1px solid #1ea300;
-            padding: 10px;
+            padding: 8px;
             pointer-events: none;
         }
 
@@ -67,240 +69,333 @@
 
 <body>
     <div id="info">
-        <h1>&gt; RECIPROCATING STEAM ENGINE // DOUBLE-ACTING</h1>
-        <p>External Combustion | Steam Expanding | Slide Valve | ~15% Efficiency</p>
+        <h1>&gt; STATIONARY STEAM ENGINE // SINGLE-CYLINDER OPEN-FRAME</h1>
+        <p>External Combustion | Steam Expanding | Centrifugal Governor | 19th Century Design</p>
     </div>
     <div id="loading">&gt; BUILDING STEAM PRESSURE...</div>
     <div id="dyno-panel"><canvas id="dyno-canvas"></canvas></div>
+
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
         class DynoGraph {
-            constructor(id) {
-                this.canvas = document.getElementById(id);
-                this.ctx = this.canvas.getContext('2d');
-                this.w = this.canvas.width = this.canvas.offsetWidth;
-                this.h = this.canvas.height = this.canvas.offsetHeight;
-                this.hist = [];
-            }
-            update(rpm) {
-                const torque = Math.max(0, 320 - rpm * 0.08);
-                const hp = torque * rpm / 5252;
-                this.hist.push({ rpm, torque, hp });
-                if (this.hist.length > 180) this.hist.shift();
-                this.draw();
-            }
+            constructor(id) { this.canvas = document.getElementById(id); this.ctx = this.canvas.getContext('2d'); this.w = this.canvas.width = this.canvas.offsetWidth; this.h = this.canvas.height = this.canvas.offsetHeight; this.hist = []; }
+            update(rpm) { const t = Math.max(0, 320 - rpm * 0.1); const hp = t * rpm / 5252; this.hist.push({ rpm, torque: t, hp }); if (this.hist.length > 180) this.hist.shift(); this.draw(); }
             draw() {
-                const { ctx, w, h, hist } = this;
-                ctx.clearRect(0, 0, w, h);
-                ctx.strokeStyle = '#1a3300'; ctx.lineWidth = 1;
+                const { ctx, w, h, hist } = this; ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = '#0d2200'; ctx.lineWidth = 1;
                 for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
                 if (hist.length < 2) return;
-                const draw = (key, color, max) => {
-                    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
-                    hist.forEach((p, i) => {
-                        const x = (i / 180) * w;
-                        const y = h - (p[key] / max) * h;
-                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-                    }); ctx.stroke();
-                };
-                draw('torque', '#ffaa00', 500); draw('hp', '#00aaff', 500);
-                const cur = hist[hist.length - 1];
-                ctx.fillStyle = '#33ff00'; ctx.font = '13px monospace';
-                ctx.fillText(`RPM: ${Math.round(cur.rpm)}`, 8, 18);
-                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${Math.round(cur.torque)} ft-lbs`, 8, 36);
-                ctx.fillStyle = '#00aaff'; ctx.fillText(`Power: ${Math.round(cur.hp)} HP`, 8, 54);
+                [['torque', '#ffaa00', 500], ['hp', '#00aaff', 500]].forEach(([k, c, mx]) => {
+                    ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath();
+                    hist.forEach((p, i) => { const x = (i / 180) * w, y = h - (p[k] / mx) * h; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
+                });
+                const c = hist[hist.length - 1];
+                ctx.fillStyle = '#33ff00'; ctx.font = '12px monospace'; ctx.fillText(`RPM: ${Math.round(c.rpm)}`, 8, 18);
+                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${Math.round(c.torque)} ft-lbs`, 8, 34);
+                ctx.fillStyle = '#00aaff'; ctx.fillText(`Power: ${Math.round(c.hp)} HP`, 8, 50);
             }
         }
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050505);
-        const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 500);
-        camera.position.set(0, 15, 45);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
-        renderer.setSize(innerWidth, innerHeight);
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        scene.background = new THREE.Color(0x0a0a0a);
+        scene.fog = new THREE.Fog(0x0a0a0a, 60, 150);
+
+        const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 300);
+        camera.position.set(18, 16, 28);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(devicePixelRatio); renderer.setSize(innerWidth, innerHeight);
+        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
         document.body.appendChild(renderer.domElement);
+
         const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; controls.target.set(0, 2, 0);
+        controls.enableDamping = true; controls.target.set(0, 5, 0);
+        controls.minDistance = 12; controls.maxDistance = 80;
 
-        scene.add(new THREE.AmbientLight(0x333333));
-        const hemi = new THREE.HemisphereLight(0xffeedd, 0x111111, 0.7);
-        scene.add(hemi);
-        const dir = new THREE.DirectionalLight(0xffffff, 2.5);
-        dir.position.set(20, 25, 10); scene.add(dir);
-        const steamLight = new THREE.PointLight(0xffffff, 0, 20);
-        steamLight.position.set(-10, 5, 0); scene.add(steamLight);
-        const grid = new THREE.GridHelper(100, 80, 0x222200, 0x111100);
-        grid.position.y = -8; scene.add(grid);
+        scene.add(new THREE.AmbientLight(0x303030, 1.0));
+        const sun = new THREE.DirectionalLight(0xfff5e0, 2.8);
+        sun.position.set(15, 25, 12); sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
+        sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+        sun.shadow.camera.far = 100; scene.add(sun);
+        const fill = new THREE.DirectionalLight(0x8899bb, 0.9);
+        fill.position.set(-12, 10, -8); scene.add(fill);
 
-        const MAT = {
-            iron: new THREE.MeshStandardMaterial({ color: 0x332211, roughness: 0.85, metalness: 0.4 }),
-            brass: new THREE.MeshStandardMaterial({ color: 0xbb8800, roughness: 0.3, metalness: 0.9 }),
-            chrome: new THREE.MeshStandardMaterial({ color: 0xdddddd, roughness: 0.05, metalness: 1.0 }),
-            steel: new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.85 }),
-            red: new THREE.MeshStandardMaterial({ color: 0x990000, roughness: 0.7, metalness: 0.3 }),
-            steam: new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.0 }),
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100),
+            new THREE.MeshStandardMaterial({ color: 0x151510, roughness: 0.95, metalness: 0.05 }));
+        floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
+
+        // ── MATERIALS ──
+        const M = {
+            green: new THREE.MeshStandardMaterial({ color: 0x2d5a2d, roughness: 0.7, metalness: 0.3 }),
+            darkGrn: new THREE.MeshStandardMaterial({ color: 0x1c3d1c, roughness: 0.8, metalness: 0.25 }),
+            red: new THREE.MeshStandardMaterial({ color: 0x992211, roughness: 0.5, metalness: 0.35 }),
+            brass: new THREE.MeshStandardMaterial({ color: 0xcc9922, roughness: 0.25, metalness: 0.9 }),
+            steel: new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.35, metalness: 0.9 }),
+            chrome: new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.05, metalness: 1.0 }),
+            iron: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9, metalness: 0.4 }),
+            darkIron: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.92, metalness: 0.35 }),
         };
 
-        // --- Boiler (large horizontal cylinder) ---
-        const boilerGeo = new THREE.CylinderGeometry(4, 4, 20, 32);
-        const boiler = new THREE.Mesh(boilerGeo, MAT.iron);
-        boiler.rotation.z = Math.PI / 2; boiler.position.set(-12, 0, 0); scene.add(boiler);
-        // Boiler end caps
-        const capGeo = new THREE.CylinderGeometry(4, 4, 0.5, 32);
-        const cap1 = new THREE.Mesh(capGeo, MAT.brass); cap1.rotation.z = Math.PI / 2; cap1.position.set(-22.2, 0, 0); scene.add(cap1);
-        const cap2 = new THREE.Mesh(capGeo, MAT.brass); cap2.rotation.z = Math.PI / 2; cap2.position.set(-1.8, 0, 0); scene.add(cap2);
-        // Boiler bands/rivets
-        for (let i = 0; i < 5; i++) {
-            const band = new THREE.Mesh(new THREE.TorusGeometry(4.1, 0.2, 8, 32), MAT.brass);
-            band.rotation.x = Math.PI / 2; band.position.set(-18 + i * 3, 0, 0); scene.add(band);
-        }
-        // Chimney
-        const chimney = new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1, 8, 16), MAT.iron);
-        chimney.position.set(-18, 8, 0); scene.add(chimney);
-        // Steam dome
-        const dome = new THREE.Mesh(new THREE.SphereGeometry(1.5, 16, 16, 0, Math.PI * 2, 0, Math.PI / 2), MAT.brass);
-        dome.position.set(-12, 4.3, 0); scene.add(dome);
-        // Safety valve
-        const safetyValve = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8), MAT.brass);
-        safetyValve.position.set(-10, 5.1, 0); scene.add(safetyValve);
+        function A(m) { m.castShadow = true; m.receiveShadow = true; return m; }
 
-        // Steam pipe from boiler to cylinder
-        const pipePath = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(-1.5, 3, 0),
-            new THREE.Vector3(0, 5, 0),
-            new THREE.Vector3(4, 5, 0),
-            new THREE.Vector3(6, 3, 0),
-        ]);
-        const pipeTube = new THREE.Mesh(new THREE.TubeGeometry(pipePath, 20, 0.4, 8, false), MAT.brass);
-        scene.add(pipeTube);
-
-        // --- Steam Cylinder ---
-        const CYL_X = 8;
-        const cylBody = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 14, 32), MAT.iron);
-        cylBody.rotation.z = Math.PI / 2; cylBody.position.set(CYL_X, 0, 0); scene.add(cylBody);
-        // Cylinder end covers
-        const cylCap1 = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.6, 32), MAT.brass);
-        cylCap1.rotation.z = Math.PI / 2; cylCap1.position.set(CYL_X - 7.3, 0, 0); scene.add(cylCap1);
-        const cylCap2 = new THREE.Mesh(new THREE.CylinderGeometry(3, 3, 0.6, 32), MAT.brass);
-        cylCap2.rotation.z = Math.PI / 2; cylCap2.position.set(CYL_X + 7.3, 0, 0); scene.add(cylCap2);
-        // Piston rod stuffing box gland
-        const gland = new THREE.Mesh(new THREE.CylinderGeometry(3.4, 3.4, 1, 16), MAT.brass);
-        gland.rotation.z = Math.PI / 2; gland.position.set(CYL_X + 8, 0, 0); scene.add(gland);
-        // Cylinder bands
-        for (let i = 0; i < 3; i++) {
-            const b = new THREE.Mesh(new THREE.TorusGeometry(3.1, 0.18, 8, 32), MAT.brass);
-            b.rotation.x = Math.PI / 2; b.position.set(CYL_X - 4 + i * 4, 0, 0); scene.add(b);
-        }
-        // Piston
-        const piston = new THREE.Mesh(new THREE.CylinderGeometry(2.8, 2.8, 1.2, 32), MAT.steel);
-        piston.rotation.z = Math.PI / 2; piston.position.set(CYL_X, 0, 0); scene.add(piston);
-
-        // Piston rod
-        const PISTON_ROD_L = 18;
-        const pistonRod = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, PISTON_ROD_L, 16), MAT.chrome);
-        pistonRod.rotation.z = Math.PI / 2; scene.add(pistonRod);
-
-        // Crosshead guide rails
-        const rail1 = new THREE.Mesh(new THREE.BoxGeometry(14, 0.3, 0.3), MAT.steel);
-        rail1.position.set(CYL_X + 10, 2.5, 0); scene.add(rail1);
-        const rail2 = new THREE.Mesh(new THREE.BoxGeometry(14, 0.3, 0.3), MAT.steel);
-        rail2.position.set(CYL_X + 10, -2.5, 0); scene.add(rail2);
-
-        // Crosshead
-        const crosshead = new THREE.Mesh(new THREE.BoxGeometry(1.5, 4.5, 2), MAT.steel);
-        crosshead.position.set(CYL_X + 8, 0, 0); scene.add(crosshead);
-
-        // Connecting rod
-        const conrod = new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 8, 6, 12), MAT.steel);
-        scene.add(conrod);
-
-        // Crankshaft
-        const CRANK_X = CYL_X + 20;
-        const crankMain = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 6, 20), MAT.steel);
-        crankMain.rotation.x = Math.PI / 2; crankMain.position.set(CRANK_X, 0, 0); scene.add(crankMain);
-        const crankThrow = new THREE.Group();
-        crankThrow.position.set(CRANK_X, 0, 0);
-        const crankPin = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 3.5, 16), MAT.chrome);
-        crankPin.rotation.x = Math.PI / 2; crankPin.position.y = 4; crankThrow.add(crankPin);
-        const cw1 = new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 3), MAT.steel);
-        cw1.position.y = 2; crankThrow.add(cw1);
-        scene.add(crankThrow);
-
-        // Flywheel
-        const fw = new THREE.Mesh(new THREE.CylinderGeometry(6, 6, 1, 48), MAT.iron);
-        fw.rotation.x = Math.PI / 2; fw.position.set(CRANK_X, 0, 3.5); scene.add(fw);
-        // Flywheel spokes
+        // ── BEDPLATE (heavy green cast iron) ──
+        const bed = A(new THREE.Mesh(new THREE.BoxGeometry(26, 2, 10), M.green));
+        bed.position.set(0, 1, 0); scene.add(bed);
+        // Raised side rails on bedplate
+        [[-11.5, 0], [11.5, 0]].forEach(([x]) => {
+            const rail = A(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 9), M.darkGrn));
+            rail.position.set(x, 2.5, 0); scene.add(rail);
+        });
+        // Mounting bolts on bedplate edges
         for (let i = 0; i < 6; i++) {
-            const spoke = new THREE.Mesh(new THREE.BoxGeometry(0.4, 11, 0.5), MAT.iron);
-            spoke.rotation.z = (i / 6) * Math.PI * 2;
-            spoke.position.set(CRANK_X, 0, 3.3); scene.add(spoke);
+            [-4, 4].forEach(z => {
+                const bolt = A(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.5, 6), M.steel));
+                bolt.position.set(-10 + i * 4, 2.05, z); scene.add(bolt);
+            });
         }
-        // Flywheel rim detail
-        const fwRim = new THREE.Mesh(new THREE.TorusGeometry(5.5, 0.5, 8, 48), MAT.brass);
-        fwRim.rotation.x = Math.PI / 2; fwRim.position.set(CRANK_X, 0, 3.5); scene.add(fwRim);
 
-        // Frame/bedplate
-        const bedplate = new THREE.Mesh(new THREE.BoxGeometry(40, 1, 8), MAT.iron);
-        bedplate.position.set(8, -5, 0); scene.add(bedplate);
-        const col1 = new THREE.Mesh(new THREE.BoxGeometry(1, 10, 1), MAT.iron);
-        col1.position.set(-3, 0, 3); scene.add(col1);
-        const col2 = col1.clone(); col2.position.set(-3, 0, -3); scene.add(col2);
-        const col3 = col1.clone(); col3.position.set(CRANK_X, 0, 3); scene.add(col3);
-        const col4 = col1.clone(); col4.position.set(CRANK_X, 0, -3); scene.add(col4);
+        // ── BIG RED FLYWHEEL (LEFT) ──
+        // Position: x=-10, y-axis on flywheel shaft
+        const FW_X = -10, FW_Y = 8, FW_R = 7;
+        const flywheelGroup = new THREE.Group();
+        flywheelGroup.position.set(FW_X, FW_Y, 0);
+        scene.add(flywheelGroup);
 
-        // Steam glow effect
-        const steamGlow = new THREE.Mesh(new THREE.CylinderGeometry(3.5, 3.5, 14, 32, 1, true), MAT.steam);
-        steamGlow.rotation.z = Math.PI / 2; steamGlow.position.set(CYL_X, 0, 0); scene.add(steamGlow);
+        // Outer rim
+        const fwRim = A(new THREE.Mesh(new THREE.TorusGeometry(FW_R, 0.55, 16, 72), M.steel));
+        fwRim.rotation.x = Math.PI / 2; flywheelGroup.add(fwRim);
 
-        const CRANK_R = 4;
-        const params = { rpm: 60, autoRotate: false };
+        // 8 Spokes
+        for (let i = 0; i < 8; i++) {
+            const angle = (i / 8) * Math.PI * 2;
+            const spoke = A(new THREE.Mesh(new THREE.BoxGeometry(0.45, FW_R * 2 - 1.2, 0.6), M.red));
+            spoke.rotation.y = angle;
+            flywheelGroup.add(spoke);
+        }
+
+        // Spoke inner fill with slight bevel (visual connector)
+        const spokeFill = A(new THREE.Mesh(new THREE.CylinderGeometry(FW_R * 0.7, FW_R * 0.7, 0.5, 48), M.red));
+        flywheelGroup.add(spokeFill);
+
+        // Hub
+        const fwHub = A(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.9, 24), M.steel));
+        flywheelGroup.add(fwHub);
+
+        // Crank pin (eccentric offset on flywheel face)
+        const CRANK_R_FW = 3.5;
+        const crankPin = A(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.7, 14), M.chrome));
+        crankPin.position.set(0, CRANK_R_FW, 0.5);
+        flywheelGroup.add(crankPin);
+
+        // ── FLYWHEEL BEARING STANDS ──
+        [-2, 2].forEach(z => {
+            // A-frame support
+            const col = A(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, FW_Y - 1, 8), M.green));
+            col.position.set(FW_X, (FW_Y - 1) / 2 + 1, z); scene.add(col);
+            const bear = A(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 16), M.iron));
+            bear.rotation.x = Math.PI / 2; bear.position.set(FW_X, FW_Y, z); scene.add(bear);
+        });
+
+        // Crankshaft stub (horizontal between the two bearing stands)
+        const crankStub = A(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 5, 16), M.steel));
+        crankStub.rotation.x = Math.PI / 2; crankStub.position.set(FW_X, FW_Y, 0); scene.add(crankStub);
+
+        // ── CROSSHEAD GUIDE RAILS ──
+        const GUIDE_X = 2, CROSSHEAD_Y = FW_Y;
+        [-1.8, 1.8].forEach(z => {
+            const rail = A(new THREE.Mesh(new THREE.BoxGeometry(14, 0.3, 0.4), M.steel));
+            rail.position.set(GUIDE_X + 5, CROSSHEAD_Y, z); scene.add(rail);
+        });
+
+        // ── CROSSHEAD ──
+        const crosshead = A(new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.2, 3.8), M.steel));
+        crosshead.position.set(GUIDE_X + 4, CROSSHEAD_Y, 0); scene.add(crosshead);
+        // Crosshead pin
+        const xhPin = A(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 4.4, 12), M.chrome));
+        xhPin.rotation.x = Math.PI / 2; xhPin.position.set(GUIDE_X + 4, CROSSHEAD_Y, 0); scene.add(xhPin);
+
+        // ── CONNECTING ROD (flywheel crank pin → crosshead pin) ──
+        const conRod = A(new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 10, 6, 16), M.steel));
+        conRod.position.set(0, FW_Y, 0); scene.add(conRod);
+
+        // ── PISTON ROD (going UP from crosshead to cylinder) ──
+        const pistonRod = A(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 12, 12), M.chrome));
+        pistonRod.rotation.z = Math.PI / 2; pistonRod.position.set(10, CROSSHEAD_Y, 0); scene.add(pistonRod);
+
+        // ── CYLINDER PEDESTAL ──
+        const cylPed = A(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 4.5, 12), M.green));
+        cylPed.position.set(11, 4.25, 0); scene.add(cylPed);
+        const cylBase = A(new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, 5), M.green));
+        cylBase.position.set(11, 2.4, 0); scene.add(cylBase);
+
+        // ── STEAM CYLINDER (vertical, black iron) ──
+        const CYL_X = 11, CYL_Y = 12;
+        const cylBody = A(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 8, 24), M.darkIron));
+        cylBody.position.set(CYL_X, CYL_Y, 0); scene.add(cylBody);
+        // Cylinder head (top)
+        const cylTop = A(new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.7, 24), M.iron));
+        cylTop.position.set(CYL_X, CYL_Y + 4.35, 0); scene.add(cylTop);
+        // Bottom gland / stuffing box
+        const gland = A(new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.8, 24), M.iron));
+        gland.position.set(CYL_X, CYL_Y - 4.4, 0); scene.add(gland);
+        // Cylinder banding rings
+        for (let i = 0; i < 4; i++) {
+            const b = A(new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.15, 8, 24), M.iron));
+            b.rotation.x = Math.PI / 2; b.position.set(CYL_X, CYL_Y - 3 + i * 2, 0); scene.add(b);
+        }
+
+        // Valve chest (slab on side of cylinder)
+        const valveChest = A(new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 3), M.iron));
+        valveChest.position.set(CYL_X - 3.3, CYL_Y, 0); scene.add(valveChest);
+        // Steam port stubs (horizontal brass pipes from valve chest)
+        [-1.5, 1.5].forEach(y => {
+            const port = A(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8), M.brass));
+            port.rotation.z = Math.PI / 2; port.position.set(CYL_X - 2.5, CYL_Y + y, 0); scene.add(port);
+        });
+
+        // Steam inlet pipe from top
+        const inletPath = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(CYL_X, CYL_Y + 6, 0),
+            new THREE.Vector3(CYL_X + 2, CYL_Y + 8, 0),
+            new THREE.Vector3(CYL_X + 2, CYL_Y + 10, 0),
+        ]);
+        const inletPipe = new THREE.Mesh(new THREE.TubeGeometry(inletPath, 10, 0.28, 8, false), M.brass);
+        scene.add(inletPipe);
+
+        // ── TOP CURVED BEAM / LINK ──
+        const beamPath = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-10, 18, 0),
+            new THREE.Vector3(0, 21, 0),
+            new THREE.Vector3(11, 18, 0),
+        ]);
+        const beam = A(new THREE.Mesh(new THREE.TubeGeometry(beamPath, 20, 0.4, 8, false), M.steel));
+        scene.add(beam);
+        // Beam support column
+        const beamCol = A(new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 21, 10), M.green));
+        beamCol.position.set(0, 10, 0); scene.add(beamCol);
+        // Beam pivot end rods
+        const pivotRod = A(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 4.5, 8), M.chrome));
+        pivotRod.rotation.x = Math.PI / 2; pivotRod.position.set(0, 21, 0); scene.add(pivotRod);
+
+        // ── CENTRIFUGAL GOVERNOR ──
+        const govGroup = new THREE.Group();
+        govGroup.position.set(8, 5, -4);
+        scene.add(govGroup);
+
+        // Governor vertical shaft
+        const govShaft = A(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 6, 10), M.steel));
+        govGroup.add(govShaft);
+        const govBase = A(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 0.5, 16), M.green));
+        govBase.position.y = -3; govGroup.add(govBase);
+
+        // Spinning arms and balls (governor) - these animate
+        const govArmMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.85 });
+        const govArmGroup = new THREE.Group();
+        govGroup.add(govArmGroup);
+
+        let govAngle = 0;
+        const govArms = [];
+        [-1, 1].forEach(side => {
+            const armGroup = new THREE.Group();
+            // Upper arm (diagonal)
+            const upperArm = A(new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 2.0, 4, 8), govArmMat));
+            upperArm.rotation.z = side * 0.5;
+            upperArm.position.set(side * 0.7, 0.5, 0);
+            armGroup.add(upperArm);
+            // Ball
+            const ball = A(new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 14), M.brass));
+            ball.position.set(side * 1.4, -0.4, 0);
+            armGroup.add(ball);
+            // Lower link
+            const lowerArm = A(new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 1.5, 4, 8), govArmMat));
+            lowerArm.rotation.z = -side * 0.45;
+            lowerArm.position.set(side * 0.7, -1.5, 0);
+            armGroup.add(lowerArm);
+            govArmGroup.add(armGroup);
+        });
+
+        // Governor bevel gears (decorative)
+        const govGear = A(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.4, 16), M.brass));
+        govGear.position.y = 2.0; govGroup.add(govGear);
+
+        // ── PISTON (inside cylinder) ──
+        const piston = A(new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 1.0, 20), M.steel));
+        piston.position.set(CYL_X, CYL_Y, 0); scene.add(piston);
+
+        // ── MISCELLANEOUS FITTINGS ──
+        // Pressure gauge on valve chest
+        const gauge = A(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.3, 16), M.brass));
+        gauge.rotation.x = Math.PI / 2; gauge.position.set(CYL_X - 4.2, CYL_Y + 2, 0); scene.add(gauge);
+        const gaugeFace = new THREE.Mesh(new THREE.CircleGeometry(0.55, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.0 }));
+        gaugeFace.rotation.y = -Math.PI / 2; gaugeFace.position.set(CYL_X - 4.5, CYL_Y + 2, 0); scene.add(gaugeFace);
+
+        // Condensate drain (small brass valve below cylinder)
+        const drain = A(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), M.brass));
+        drain.position.set(CYL_X + 2.6, CYL_Y - 5, 0); scene.add(drain);
+
+        // Drain pipe
+        const drainPipe = A(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.5, 8), M.brass));
+        drainPipe.position.set(CYL_X + 2.6, CYL_Y - 5.8, 0); scene.add(drainPipe);
+
+        // ── GUI ──
+        const params = { rpm: 90, autoRotate: false };
         const gui = new GUI({ title: 'Engine Controls' });
-        gui.add(params, 'rpm', 0, 400, 1).name('RPM');
+        gui.add(params, 'rpm', 0, 350, 1).name('RPM');
         gui.add(params, 'autoRotate').name('Auto Rotate');
 
         const dyno = new DynoGraph('dyno-canvas');
         document.getElementById('loading').style.opacity = 0;
 
+        // ── ANIMATION ──
         let crankAngle = 0, lastTime = 0;
+        const CRANK_R = 4.0;
 
         function animate(time) {
             requestAnimationFrame(animate);
             const dt = Math.min((time - lastTime) / 1000, 0.05); lastTime = time;
             crankAngle += (params.rpm * Math.PI * 2 / 60) * dt;
 
-            // Crank rotation
-            crankThrow.rotation.z = crankAngle;
-            fw.rotation.z = crankAngle;
+            // Flywheel rotates around its axle
+            flywheelGroup.rotation.z = crankAngle;
 
             // Crank pin world position
-            const pinX = CRANK_X + CRANK_R * Math.sin(crankAngle);
-            const pinY = CRANK_R * Math.cos(crankAngle);
+            const pinX = FW_X + Math.sin(crankAngle) * CRANK_R;
+            const pinY = FW_Y + Math.cos(crankAngle) * CRANK_R;
 
-            // Piston position (slider-crank)
-            const ROD_L = 10;
-            const sin_a = (pinX - CRANK_X) / CRANK_R;
-            const pistonX = CRANK_X - Math.sqrt(ROD_L * ROD_L - (pinY) * (pinY)) - CRANK_R * Math.cos(crankAngle);
-            const pX = CYL_X + (CRANK_R * Math.cos(crankAngle));
+            // Crosshead slides horizontally — simplified to match crank X
+            const crossX = FW_X + 14 + Math.sin(crankAngle) * CRANK_R;
+            crosshead.position.x = crossX;
 
-            piston.position.x = pX;
-            crosshead.position.x = pX + PISTON_ROD_L / 2 + 0.5;
-            pistonRod.position.x = pX + PISTON_ROD_L / 2;
+            // Piston rod horizontal
+            pistonRod.position.x = (crossX + CYL_X) / 2;
+            pistonRod.scale.x = (CYL_X - crossX) / 14;
 
-            // Connect rod
-            const cx = (pX + PISTON_ROD_L + 1 + pinX) / 2;
-            const cy = pinY / 2;
-            const angle = Math.atan2(pinY, pinX - (pX + PISTON_ROD_L + 1));
-            conrod.position.set(cx, cy, 0);
-            conrod.rotation.z = angle + Math.PI / 2;
+            // Piston in cylinder follows crosshead X → but cylinder is vertical; use to animate piston Y
+            const pistonY = CYL_Y + Math.sin(crankAngle) * 3;
+            piston.position.y = pistonY;
 
-            // Steam glow (pressure on stroke)
-            const pressure = Math.max(0, Math.sin(crankAngle));
-            MAT.steam.opacity = 0.12 * pressure;
-            steamLight.intensity = 2 * pressure;
+            // Connecting rod
+            const midX = (pinX + crossX) / 2;
+            const midY = (pinY + CROSSHEAD_Y) / 2;
+            conRod.position.set(midX, midY, 0);
+            const dx = crossX - pinX, dy = CROSSHEAD_Y - pinY;
+            conRod.rotation.z = Math.atan2(dx, dy) - Math.PI / 2;
+
+            // Governor spins and governor arms open/close with RPM
+            const govSpeed = params.rpm * 0.005;
+            govAngle += govSpeed * dt;
+            govArmGroup.rotation.y = govAngle;
+            // Open angle proportional to RPM
+            const openAngle = Math.min(Math.PI * 0.45, params.rpm / 350 * Math.PI * 0.45);
+            govArmGroup.children.forEach((armGrp, i) => {
+                armGrp.rotation.x = (i === 0 ? 1 : -1) * openAngle;
+            });
 
             if (params.autoRotate) controls.azimuthAngle += 0.002;
             controls.update();
@@ -308,6 +403,7 @@
             renderer.render(scene, camera);
         }
         animate(0);
+
         window.addEventListener('resize', () => {
             camera.aspect = innerWidth / innerHeight;
             camera.updateProjectionMatrix();

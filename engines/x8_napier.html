@@ -4,14 +4,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>X8 Engine — Napier Lion</title>
+    <title>Napier Lion W-12 — Broad Arrow Engine</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #050505;
-            color: #eee;
-            font-family: 'Courier New', monospace;
+            background: #080808;
         }
 
         #info {
@@ -21,17 +19,21 @@
             text-align: center;
             pointer-events: none;
             z-index: 10;
+            font-family: 'Courier New', monospace;
         }
 
         #info h1 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #33ff00;
             letter-spacing: 2px;
+            margin: 0;
+            text-shadow: 0 0 8px #33ff00;
         }
 
         #info p {
             color: #1ea300;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            margin: 4px 0 0;
         }
 
         #loading {
@@ -39,7 +41,8 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 1.5rem;
+            font-family: monospace;
+            font-size: 1.4rem;
             color: #33ff00;
         }
 
@@ -47,11 +50,11 @@
             position: absolute;
             bottom: 20px;
             right: 20px;
-            width: 340px;
-            height: 160px;
-            background: rgba(0, 0, 0, 0.85);
+            width: 300px;
+            height: 140px;
+            background: rgba(0, 0, 0, 0.88);
             border: 1px solid #1ea300;
-            padding: 10px;
+            padding: 8px;
             pointer-events: none;
         }
 
@@ -66,11 +69,12 @@
 
 <body>
     <div id="info">
-        <h1>&gt; NAPIER LION W-12 / X8 // THREE-BANK CONFIGURATION</h1>
-        <p>Three Banks × 4 Cylinders | W/X Formation | 12 Cylinders Total | Firing: 1-9-5-2-10-6-3-11-7-4-12-8</p>
+        <h1>&gt; NAPIER LION // W-12 BROAD ARROW AIRCRAFT ENGINE</h1>
+        <p>3 Banks × 4 Cylinders | 450 HP | 1.5L/cyl | WWII Aviation | Front Supercharger</p>
     </div>
-    <div id="loading">&gt; INITIALIZING NAPIER LION...</div>
+    <div id="loading">&gt; INITIALIZING BROAD ARROW...</div>
     <div id="dyno-panel"><canvas id="dyno-canvas"></canvas></div>
+
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
@@ -80,187 +84,318 @@
         import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
         class DynoGraph {
-            constructor(id) {
-                this.canvas = document.getElementById(id);
-                this.ctx = this.canvas.getContext('2d');
-                this.w = this.canvas.width = this.canvas.offsetWidth;
-                this.h = this.canvas.height = this.canvas.offsetHeight;
-                this.hist = [];
-            }
-            update(rpm) {
-                const torque = Math.max(0, 750 * (1 - Math.pow((rpm - 3500) / 3000, 2)));
-                const hp = torque * rpm / 5252;
-                this.hist.push({ rpm, torque, hp });
-                if (this.hist.length > 180) this.hist.shift();
-                this.draw();
-            }
+            constructor(id) { this.canvas = document.getElementById(id); this.ctx = this.canvas.getContext('2d'); this.w = this.canvas.width = this.canvas.offsetWidth; this.h = this.canvas.height = this.canvas.offsetHeight; this.hist = []; }
+            update(rpm) { const t = Math.max(0, 850 * (1 - Math.pow((rpm - 3200) / 3000, 2))), hp = t * rpm / 5252; this.hist.push({ rpm, torque: t, hp }); if (this.hist.length > 180) this.hist.shift(); this.draw(); }
             draw() {
-                const { ctx, w, h, hist } = this;
-                ctx.clearRect(0, 0, w, h);
-                ctx.strokeStyle = '#1a3300'; ctx.lineWidth = 1;
+                const { ctx, w, h, hist } = this; ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = '#0d2200'; ctx.lineWidth = 1;
                 for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
                 if (hist.length < 2) return;
-                ['torque', 'hp'].forEach((key, ki) => {
-                    ctx.strokeStyle = ki === 0 ? '#ffaa00' : '#00aaff'; ctx.lineWidth = 2; ctx.beginPath();
-                    hist.forEach((p, i) => {
-                        const x = (i / 180) * w, y = h - (p[key] / 1500) * h;
-                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-                    }); ctx.stroke();
+                [['torque', '#ffaa00', 1800], ['hp', '#00aaff', 1800]].forEach(([k, c, mx]) => {
+                    ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath();
+                    hist.forEach((p, i) => { const x = (i / 180) * w, y = h - (p[k] / mx) * h; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
                 });
-                const cur = hist[hist.length - 1];
-                ctx.fillStyle = '#33ff00'; ctx.font = '13px monospace';
-                ctx.fillText(`RPM: ${Math.round(cur.rpm)}`, 8, 18);
-                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${Math.round(cur.torque)} ft-lbs`, 8, 36);
-                ctx.fillStyle = '#00aaff'; ctx.fillText(`Power: ${Math.round(cur.hp)} HP`, 8, 54);
+                const c = hist[hist.length - 1];
+                ctx.fillStyle = '#33ff00'; ctx.font = '12px monospace'; ctx.fillText(`RPM: ${Math.round(c.rpm)}`, 8, 18);
+                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${Math.round(c.torque)} ft-lbs`, 8, 34);
+                ctx.fillStyle = '#00aaff'; ctx.fillText(`Power: ${Math.round(c.hp)} HP`, 8, 50);
             }
         }
 
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050505);
-        const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 500);
-        camera.position.set(0, 25, 50);
+        scene.background = new THREE.Color(0x080808);
+        scene.fog = new THREE.Fog(0x080808, 60, 180);
+
+        const camera = new THREE.PerspectiveCamera(48, innerWidth / innerHeight, 0.1, 300);
+        camera.position.set(20, 18, 35);
+
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
-        renderer.setPixelRatio(devicePixelRatio);
-        renderer.setSize(innerWidth, innerHeight);
-        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.setPixelRatio(devicePixelRatio); renderer.setSize(innerWidth, innerHeight);
+        renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.2;
         document.body.appendChild(renderer.domElement);
+
         const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; controls.target.set(0, 2, 0);
+        controls.enableDamping = true; controls.target.set(0, 4, 0);
 
-        scene.add(new THREE.AmbientLight(0x222222));
-        scene.add(new THREE.HemisphereLight(0xffffff, 0x222222, 0.6));
-        const dir = new THREE.DirectionalLight(0xffffff, 2.5);
-        dir.position.set(20, 30, 15); scene.add(dir);
-        scene.add(new THREE.GridHelper(120, 80, 0x111100, 0x080800));
+        scene.add(new THREE.AmbientLight(0x202820, 1.2));
+        const sun = new THREE.DirectionalLight(0xfff8f0, 3.0);
+        sun.position.set(15, 25, 12); sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.camera.left = -35; sun.shadow.camera.right = 35;
+        sun.shadow.camera.top = 35; sun.shadow.camera.bottom = -35;
+        sun.shadow.camera.far = 100; scene.add(sun);
+        const fill = new THREE.DirectionalLight(0x445566, 1.2);
+        fill.position.set(-15, 8, -10); scene.add(fill);
+        const rim = new THREE.DirectionalLight(0x334444, 0.8);
+        rim.position.set(0, -5, -20); scene.add(rim);
 
-        const MAT = {
-            block: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9, metalness: 0.3, transparent: true, opacity: 0.2 }),
-            steel: new THREE.MeshStandardMaterial({ color: 0x999999, roughness: 0.45, metalness: 0.85 }),
-            chrome: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 1.0 }),
-            exhaust: new THREE.MeshStandardMaterial({ color: 0xb87333, roughness: 0.6, metalness: 0.8 }),
-            combustion: new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0, blending: THREE.AdditiveBlending }),
-            head: new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 }),
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(120, 120),
+            new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.95, metalness: 0.05 }));
+        floor.rotation.x = -Math.PI / 2; floor.position.y = -8; floor.receiveShadow = true; scene.add(floor);
+
+        // ── MATERIALS matched to Napier Lion reference (olive/dark aluminum, riveted) ──
+        const M = {
+            block: new THREE.MeshStandardMaterial({ color: 0x5a5a50, roughness: 0.55, metalness: 0.7 }),
+            cover: new THREE.MeshStandardMaterial({ color: 0x7a7a6a, roughness: 0.4, metalness: 0.75 }),
+            dark: new THREE.MeshStandardMaterial({ color: 0x2a2a22, roughness: 0.8, metalness: 0.5 }),
+            exhaust: new THREE.MeshStandardMaterial({ color: 0x333328, roughness: 0.7, metalness: 0.6 }),
+            chrome: new THREE.MeshStandardMaterial({ color: 0xcccccc, roughness: 0.08, metalness: 1.0 }),
+            steel: new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.35, metalness: 0.9 }),
+            pipe: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.6, metalness: 0.8 }),
+            rivet: new THREE.MeshStandardMaterial({ color: 0x666660, roughness: 0.45, metalness: 0.8 }),
+            glass: new THREE.MeshPhysicalMaterial({ color: 0xaabbcc, transmission: 0.7, opacity: 0.3, transparent: true, roughness: 0.05, metalness: 0.0, side: THREE.DoubleSide }),
+            flash: new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0.0, blending: THREE.AdditiveBlending }),
         };
 
-        // X8 / W-12: Three banks of 4 cylinders at 60° apart (0°, 120°, 240° — but Napier Lion is actually a W/Broad-Arrow: 3 banks at 60°)
-        // We'll build it as 3 banks at 60° from vertical: left at -60°, center at 0°, right at +60°
-        const BANK_ANGLES = [-Math.PI / 3, 0, Math.PI / 3]; // -60°, 0°, +60°
-        const CYLS_PER_BANK = 4;
-        const CYL_SPACING = 3.6;
-        const BORE = 1.6, STROKE = 2.0, ROD_L = 5.5, CRANK_R = 1.0;
+        function A(m) { m.castShadow = true; m.receiveShadow = true; return m; }
 
-        const crankGroup = new THREE.Group();
-        scene.add(crankGroup);
-
-        // Shared crankshaft spine
-        const crankSpine = new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, CYL_SPACING * (CYLS_PER_BANK - 1) + 4, 20), MAT.steel);
-        crankSpine.rotation.x = Math.PI / 2; crankGroup.add(crankSpine);
-
-        // Firing order for W-12: interleaved across banks
-        // Pin angles: every 60° (360° / 6 firings per revolution = 60°)
-        const PIN_ANGLES = [];
-        for (let i = 0; i < CYLS_PER_BANK; i++) {
-            PIN_ANGLES.push((i * Math.PI * 2) / CYLS_PER_BANK);
+        // Helper: make a rounded valve cover extrusion shape
+        function makeValveCover(length, width, height, mat) {
+            const shape = new THREE.Shape();
+            const r = width * 0.18;
+            shape.moveTo(-width / 2 + r, 0);
+            shape.lineTo(width / 2 - r, 0);
+            shape.quadraticCurveTo(width / 2, 0, width / 2, r);
+            shape.lineTo(width / 2, height - r);
+            shape.quadraticCurveTo(width / 2, height, width / 2 - r, height);
+            shape.lineTo(-width / 2 + r, height);
+            shape.quadraticCurveTo(-width / 2, height, -width / 2, height - r);
+            shape.lineTo(-width / 2, r);
+            shape.quadraticCurveTo(-width / 2, 0, -width / 2 + r, 0);
+            const geo = new THREE.ExtrudeGeometry(shape, { depth: length, bevelEnabled: true, bevelThickness: 0.15, bevelSize: 0.1, bevelSegments: 3 });
+            geo.translate(0, 0, -length / 2);
+            return A(new THREE.Mesh(geo, mat));
         }
 
-        const allPistons = []; // { mesh, bankAngle, pinAngle, zPos, flashMesh, light }
+        // Helper: add rivets along panel edge
+        function addRivets(parent, count, startX, endX, y, z, mat) {
+            for (let i = 0; i < count; i++) {
+                const rivet = A(new THREE.Mesh(new THREE.SphereGeometry(0.12, 8, 8), mat));
+                rivet.position.set(startX + (i / (count - 1)) * (endX - startX), y, z);
+                parent.add(rivet);
+            }
+        }
 
-        BANK_ANGLES.forEach((bankAngle, bankIdx) => {
-            // Each bank is tilted at bankAngle from vertical
+        // ── CRANKCASE BLOCK (central housing) ──
+        // The broad-arrow crankcase is a wide, thick block sitting at bottom
+        const caseGeo = new THREE.BoxGeometry(20, 5, 22);
+        const crankcase = A(new THREE.Mesh(caseGeo, M.block));
+        crankcase.position.set(0, 0, 0); scene.add(crankcase);
+
+        // Oil sump at bottom
+        const sump = A(new THREE.Mesh(new THREE.BoxGeometry(16, 2, 18), M.dark));
+        sump.position.set(0, -3.5, 0); scene.add(sump);
+
+        // Crankcase ribbing (horizontal ribs along the sides)
+        for (let i = 0; i < 5; i++) {
+            const rib = A(new THREE.Mesh(new THREE.BoxGeometry(20.6, 0.4, 0.4), M.block));
+            rib.position.set(0, -1.5 + i * 0.9, -11.5); scene.add(rib);
+            const ribB = A(new THREE.Mesh(new THREE.BoxGeometry(20.6, 0.4, 0.4), M.block));
+            ribB.position.set(0, -1.5 + i * 0.9, 11.5); scene.add(ribB);
+        }
+
+        // ── THREE CYLINDER BANKS ──
+        // Center bank: vertical (0°)
+        // Left bank: -60° from center (tilting left/outward)
+        // Right bank: +60° from center
+
+        const BANKS = [
+            { angle: 0, name: 'center', yOff: 0 },
+            { angle: -Math.PI / 3, name: 'left', yOff: 0 },
+            { angle: Math.PI / 3, name: 'right', yOff: 0 },
+        ];
+        const CYLS_PER_BANK = 4;
+        const CYL_SPACING = 5.0;
+        const CYL_LEN = 6.5;    // cylinder length (along bank axis)
+        const CRANK_R = 1.8;
+        const ROD_L = 6.0;
+
+        const allPistons = [];
+
+        BANKS.forEach((bank, bi) => {
             const bankGroup = new THREE.Group();
             scene.add(bankGroup);
 
+            // Bank direction vector (from crankshaft outward)
+            const bankDir = new THREE.Vector3(Math.sin(bank.angle), Math.cos(bank.angle), 0);
+            const bankBase = 2.5; // start at this distance from crankshaft center
+
+            // ── VALVE COVER for this bank ──
+            const coverOffset = bankBase + CYL_LEN + 1.0;
+            const cover = makeValveCover(CYL_SPACING * (CYLS_PER_BANK - 1) + 5, 4.5, 2.8, M.cover);
+            cover.position.set(
+                bankDir.x * coverOffset,
+                bankDir.y * coverOffset,
+                0
+            );
+            // Rotate so the cover aligns with the bank direction
+            cover.rotation.z = -bank.angle;
+            cover.rotation.y = Math.PI / 2;
+            scene.add(cover);
+
+            // Rivets on valve cover flange
+            for (let side of [-1, 1]) {
+                for (let i = 0; i < 5; i++) {
+                    const rv = A(new THREE.Mesh(new THREE.SphereGeometry(0.15, 8, 8), M.rivet));
+                    const zOff = -CYL_SPACING * (CYLS_PER_BANK - 1) / 2 + i * CYL_SPACING * 0.75;
+                    rv.position.set(
+                        bankDir.x * (coverOffset + 0.1) + (-bankDir.y) * (2.4 * side),
+                        bankDir.y * (coverOffset + 0.1) + bankDir.x * (2.4 * side),
+                        zOff
+                    );
+                    scene.add(rv);
+                }
+            }
+
+            // ── Cylinder block for this bank ──
+            const cylBlockMesh = A(new THREE.Mesh(
+                new THREE.BoxGeometry(3.8, CYL_LEN, CYL_SPACING * (CYLS_PER_BANK - 1) + 4.5),
+                M.block
+            ));
+            const cylBlockDist = bankBase + CYL_LEN / 2;
+            cylBlockMesh.position.set(bankDir.x * cylBlockDist, bankDir.y * cylBlockDist, 0);
+            cylBlockMesh.rotation.z = -bank.angle;
+            scene.add(cylBlockMesh);
+
+            // Cylinder fins (cooling fins between cylinders visible)
+            for (let i = 0; i < CYLS_PER_BANK - 1; i++) {
+                const finZ = (i - (CYLS_PER_BANK - 2) / 2) * CYL_SPACING + CYL_SPACING / 2;
+                const fin = A(new THREE.Mesh(new THREE.BoxGeometry(4.2, CYL_LEN + 0.3, 0.3), M.dark));
+                fin.position.set(bankDir.x * cylBlockDist, bankDir.y * cylBlockDist, finZ);
+                fin.rotation.z = -bank.angle;
+                scene.add(fin);
+            }
+
             for (let i = 0; i < CYLS_PER_BANK; i++) {
                 const zPos = (i - (CYLS_PER_BANK - 1) / 2) * CYL_SPACING;
-                const pinAngle = PIN_ANGLES[i] + (bankIdx * Math.PI * 2 / 3);
-                const cylOffset = 7.0;
+                const pinAngle = (i * Math.PI / 2) + (bi * Math.PI * 2 / 3);
+                const cylDist = bankBase + CYL_LEN / 2;
 
-                // Glass cylinder liner
+                // Cylinder liner (glass, visible inside cylinder)
                 const liner = new THREE.Mesh(
-                    new THREE.CylinderGeometry(BORE + 0.1, BORE + 0.1, STROKE + 3, 20, 1, true),
-                    new THREE.MeshPhysicalMaterial({ color: 0xaaddff, transmission: 0.9, opacity: 0.3, transparent: true, roughness: 0, metalness: 0, side: THREE.DoubleSide })
+                    new THREE.CylinderGeometry(1.2, 1.2, CYL_LEN, 20, 1, true),
+                    M.glass
                 );
-                liner.position.set(
-                    Math.sin(bankAngle) * cylOffset,
-                    Math.cos(bankAngle) * cylOffset,
-                    zPos
-                );
-                liner.rotation.z = -bankAngle;
+                liner.position.set(bankDir.x * cylDist, bankDir.y * cylDist, zPos);
+                liner.rotation.z = -bank.angle;
                 scene.add(liner);
 
-                // Cylinder head
-                const head = new THREE.Mesh(new THREE.CylinderGeometry(BORE + 0.6, BORE + 0.6, 1.2, 20), MAT.head);
-                head.position.set(
-                    Math.sin(bankAngle) * (cylOffset + STROKE / 2 + 1.5),
-                    Math.cos(bankAngle) * (cylOffset + STROKE / 2 + 1.5),
+                // Exhaust stub (small pipe stub on side of each cylinder)
+                const exhDist = bankBase + CYL_LEN * 0.4;
+                const exhStub = A(new THREE.Mesh(new THREE.CylinderGeometry(0.28, 0.35, 2.8, 8), M.exhaust));
+                // Exhaust goes perpendicular to bank and slightly downward
+                exhStub.position.set(
+                    bankDir.x * exhDist + (-bankDir.y) * 2.0,
+                    bankDir.y * exhDist + bankDir.x * 2.0,
                     zPos
                 );
-                head.rotation.z = -bankAngle;
-                scene.add(head);
+                // Rotate exhaust stub to point outward from block
+                exhStub.rotation.z = -bank.angle + Math.PI / 2;
+                scene.add(exhStub);
+
+                // Individual intake trumpet (visible on manifold side)
+                const intakeDist = bankBase + CYL_LEN * 0.25;
+                const intake = A(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.3, 2.0, 10), M.dark));
+                intake.position.set(
+                    bankDir.x * intakeDist - (-bankDir.y) * 2.5,
+                    bankDir.y * intakeDist - bankDir.x * 2.5,
+                    zPos
+                );
+                intake.rotation.z = -bank.angle + Math.PI / 2;
+                scene.add(intake);
+
+                // Spark plug wire (thin, black)
+                const plugPath = new THREE.LineCurve3(
+                    new THREE.Vector3(bankDir.x * (bankBase + CYL_LEN) + 0.5, bankDir.y * (bankBase + CYL_LEN) + 0.3, zPos),
+                    new THREE.Vector3(0, -1, zPos)
+                );
+                const plugWire = new THREE.Mesh(new THREE.TubeGeometry(plugPath, 6, 0.06, 5, false), M.pipe);
+                scene.add(plugWire);
 
                 // Piston
-                const piston = new THREE.Mesh(new THREE.CylinderGeometry(BORE - 0.1, BORE - 0.1, 0.8, 20), MAT.chrome);
-                piston.position.set(
-                    Math.sin(bankAngle) * cylOffset,
-                    Math.cos(bankAngle) * cylOffset,
-                    zPos
-                );
-                piston.rotation.z = -bankAngle;
+                const piston = A(new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.9, 18), M.steel));
+                piston.position.set(bankDir.x * cylDist, bankDir.y * cylDist, zPos);
+                piston.rotation.z = -bank.angle;
                 scene.add(piston);
 
                 // Combustion flash
-                const flash = new THREE.Mesh(new THREE.CylinderGeometry(BORE, BORE, 0.5, 16), MAT.combustion.clone());
-                flash.position.set(
-                    Math.sin(bankAngle) * (cylOffset + STROKE / 2 + 0.5),
-                    Math.cos(bankAngle) * (cylOffset + STROKE / 2 + 0.5),
-                    zPos
-                );
-                flash.rotation.z = -bankAngle;
+                const flash = new THREE.Mesh(new THREE.CylinderGeometry(1.1, 1.1, 0.6, 14), M.flash.clone());
+                flash.position.set(bankDir.x * (bankBase + CYL_LEN - 0.5), bankDir.y * (bankBase + CYL_LEN - 0.5), zPos);
+                flash.rotation.z = -bank.angle;
                 scene.add(flash);
 
-                const light = new THREE.PointLight(0xff5500, 0, 8);
-                light.position.copy(flash.position);
-                scene.add(light);
+                const fLight = new THREE.PointLight(0xff5500, 0, 7);
+                fLight.position.copy(flash.position);
+                scene.add(fLight);
 
-                // Crank throw
-                const throwGroup = new THREE.Group();
-                throwGroup.position.z = zPos;
-                const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 1, 12), MAT.chrome);
-                pin.rotation.x = Math.PI / 2; pin.position.y = CRANK_R; throwGroup.add(pin);
-                const web = new THREE.Mesh(new THREE.BoxGeometry(0.5, CRANK_R + 0.3, 0.8), MAT.steel);
-                web.position.y = CRANK_R / 2; throwGroup.add(web);
-                crankGroup.add(throwGroup);
-
-                allPistons.push({
-                    mesh: piston, bankAngle, pinAngle, zPos, flash, light, throwGroup,
-                    basePos: new THREE.Vector3(Math.sin(bankAngle) * cylOffset, Math.cos(bankAngle) * cylOffset, zPos),
-                    dir: new THREE.Vector3(Math.sin(bankAngle), Math.cos(bankAngle), 0)
-                });
+                allPistons.push({ piston, flash, fLight, pinAngle, zPos, bankDir, baseY: cylDist });
             }
         });
 
-        // Central block ghost
-        const blockGeo = new THREE.BoxGeometry(16, 16, CYL_SPACING * 3 + 4);
-        const blockMesh = new THREE.Mesh(blockGeo, MAT.block);
-        scene.add(blockMesh);
+        // ── FRONT SUPERCHARGER / PROPELLER REDUCTION GEARBOX ──
+        const supGroup = new THREE.Group();
+        supGroup.position.set(0, 0, 13);
+        scene.add(supGroup);
 
-        // Shared exhaust manifold (simple tube per bank)
-        BANK_ANGLES.forEach(bankAngle => {
-            const exhPath = new THREE.LineCurve3(
-                new THREE.Vector3(Math.sin(bankAngle) * 8, Math.cos(bankAngle) * 8, -7),
-                new THREE.Vector3(Math.sin(bankAngle) * 8, Math.cos(bankAngle) * 8, 7)
-            );
-            const exhTube = new THREE.Mesh(new THREE.TubeGeometry(exhPath, 4, 0.4, 8, false), MAT.exhaust);
-            scene.add(exhTube);
+        // Main supercharger housing (large disc/drum)
+        const supHousing = A(new THREE.Mesh(new THREE.CylinderGeometry(5, 5, 3, 36), M.cover));
+        supHousing.rotation.x = Math.PI / 2; supGroup.add(supHousing);
+
+        // Supercharger impeller front face detail
+        for (let i = 0; i < 8; i++) {
+            const a = (i / 8) * Math.PI * 2;
+            const vane = A(new THREE.Mesh(new THREE.BoxGeometry(0.25, 1.8, 0.15), M.chrome));
+            vane.rotation.y = a; vane.position.set(Math.sin(a) * 2.8, Math.cos(a) * 2.8, 1.6);
+            supGroup.add(vane);
+        }
+        const supHub = A(new THREE.Mesh(new THREE.CylinderGeometry(1, 1.2, 3.2, 20), M.steel));
+        supHub.rotation.x = Math.PI / 2; supGroup.add(supHub);
+
+        // Carb intakes on back of supercharger (4 large circular intakes)
+        for (let i = 0; i < 4; i++) {
+            const a = (i / 4) * Math.PI * 2;
+            const intk = A(new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.25, 8, 20), M.dark));
+            intk.position.set(Math.sin(a) * 3.0, Math.cos(a) * 3.0, -1.8);
+            supGroup.add(intk);
+        }
+
+        // Bevel gear housing
+        const bevelHousing = A(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.5, 4, 20), M.cover));
+        bevelHousing.rotation.x = Math.PI / 2; bevelHousing.position.z = 5; supGroup.add(bevelHousing);
+
+        // ── CRANKSHAFT ──
+        const crankSpine = A(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.7, CYL_SPACING * (CYLS_PER_BANK - 1) + 4, 20), M.steel));
+        crankSpine.rotation.x = Math.PI / 2; crankSpine.position.set(0, 0, 0); scene.add(crankSpine);
+
+        // ── REAR ACCESSORY DRIVE (magneto housing + oil pump) ──
+        const rearGroup = new THREE.Group();
+        rearGroup.position.set(0, 0, -13); scene.add(rearGroup);
+        const magHousing = A(new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.8, 3, 16), M.dark));
+        magHousing.rotation.x = Math.PI / 2; rearGroup.add(magHousing);
+        // Magneto (small cylinders on top)
+        [-2, 2].forEach(xOff => {
+            const mag = A(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 0.8, 2.5, 10), M.dark));
+            mag.rotation.x = Math.PI / 2; mag.position.set(xOff, 3.5, 0.5); rearGroup.add(mag);
         });
 
-        // Post-processing
+        // ── MISC PIPES & WIRING ──
+        // Oil return pipe along bottom
+        const oilPath = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(-9, -4, 8),
+            new THREE.Vector3(-8, -5, 4),
+            new THREE.Vector3(-7, -5.5, 0),
+            new THREE.Vector3(-8, -5, -4),
+        ]);
+        scene.add(new THREE.Mesh(new THREE.TubeGeometry(oilPath, 12, 0.22, 7, false), M.pipe));
+
+        // ── POST-PROCESSING ──
         const composer = new EffectComposer(renderer);
         composer.addPass(new RenderPass(scene, camera));
-        const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.2, 0.4, 0.85);
-        bloom.strength = 0.4; composer.addPass(bloom);
+        const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.0, 0.4, 0.85);
+        bloom.strength = 0.35; composer.addPass(bloom);
 
-        const params = { rpm: 1000, autoRotate: false };
+        const params = { rpm: 90, autoRotate: false };
         const gui = new GUI({ title: 'Engine Controls' });
         gui.add(params, 'rpm', 0, 6500, 10).name('RPM');
         gui.add(params, 'autoRotate').name('Auto Rotate');
@@ -274,19 +409,22 @@
             requestAnimationFrame(animate);
             const dt = Math.min((time - lastTime) / 1000, 0.05); lastTime = time;
             crankAngle += (params.rpm * Math.PI * 2 / 60) * dt;
-            crankGroup.rotation.z = crankAngle;
 
             allPistons.forEach(p => {
                 const theta = crankAngle + p.pinAngle;
-                const pistonDist = 7 + CRANK_R * Math.cos(theta) + Math.sqrt(Math.max(0, ROD_L * ROD_L - CRANK_R * CRANK_R * Math.sin(theta) * Math.sin(theta)));
-                p.mesh.position.set(p.dir.x * pistonDist, p.dir.y * pistonDist, p.zPos);
+                const pistonDist = p.baseY + CRANK_R * Math.cos(theta) +
+                    Math.sqrt(Math.max(0, ROD_L * ROD_L - CRANK_R * CRANK_R * Math.sin(theta) * Math.sin(theta)));
+                p.piston.position.set(p.bankDir.x * pistonDist, p.bankDir.y * pistonDist, p.zPos);
 
-                let phase = ((crankAngle * 180 / Math.PI) + p.pinAngle * 180 / Math.PI) % 720;
+                let phase = ((crankAngle + p.pinAngle) * 180 / Math.PI) % 720;
                 if (phase < 0) phase += 720;
-                const firing = phase >= 0 && phase < 50;
-                p.flash.material.opacity = firing ? 0.9 * (1 - phase / 50) : 0;
-                p.light.intensity = firing ? 6 * (1 - phase / 50) : 0;
+                const isFiring = phase < 50;
+                p.flash.material.opacity = isFiring ? 0.85 * (1 - phase / 50) : 0;
+                p.fLight.intensity = isFiring ? 5 * (1 - phase / 50) : 0;
             });
+
+            // Supercharger spins fast
+            supGroup.children[0].rotation.z = crankAngle * 5;
 
             if (params.autoRotate) controls.azimuthAngle += 0.003;
             controls.update();
@@ -294,6 +432,7 @@
             composer.render();
         }
         animate(0);
+
         window.addEventListener('resize', () => {
             camera.aspect = innerWidth / innerHeight;
             camera.updateProjectionMatrix();

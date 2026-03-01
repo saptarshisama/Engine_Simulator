@@ -4,14 +4,12 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Stirling Engine Simulation</title>
+    <title>Stirling Engine — Gamma Type</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #050505;
-            color: #eee;
-            font-family: 'Courier New', monospace;
+            background: #0a0a12;
         }
 
         #info {
@@ -20,19 +18,22 @@
             width: 100%;
             text-align: center;
             pointer-events: none;
-            text-shadow: 0 0 5px #000;
             z-index: 10;
+            font-family: 'Courier New', monospace;
         }
 
         #info h1 {
-            font-size: 1.2rem;
+            font-size: 1.1rem;
             color: #33ff00;
             letter-spacing: 2px;
+            margin: 0;
+            text-shadow: 0 0 8px #33ff00;
         }
 
         #info p {
             color: #1ea300;
-            font-size: 0.9rem;
+            font-size: 0.85rem;
+            margin: 4px 0 0;
         }
 
         #loading {
@@ -40,20 +41,23 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-size: 1.5rem;
+            font-family: monospace;
+            font-size: 1.4rem;
             color: #33ff00;
+            text-shadow: 0 0 8px #33ff00;
         }
 
         #dyno-panel {
             position: absolute;
             bottom: 20px;
             right: 20px;
-            width: 340px;
-            height: 160px;
-            background: rgba(0, 0, 0, 0.85);
+            width: 300px;
+            height: 140px;
+            background: rgba(0, 0, 0, 0.88);
             border: 1px solid #1ea300;
-            padding: 10px;
+            padding: 8px;
             pointer-events: none;
+            font-family: monospace;
         }
 
         #dyno-canvas {
@@ -67,17 +71,18 @@
 
 <body>
     <div id="info">
-        <h1>&gt; STIRLING ENGINE // ALPHA CONFIGURATION</h1>
-        <p>External Combustion | Closed Cycle | Helium Working Gas | ~40% Efficiency</p>
+        <h1>&gt; STIRLING ENGINE // GAMMA CONFIGURATION</h1>
+        <p>External Combustion | Closed Helium Cycle | Spirit Lamp Heat Source</p>
     </div>
-    <div id="loading">&gt; INITIALIZING STIRLING CYCLE...</div>
+    <div id="loading">&gt; HEATING DISPLACER...</div>
     <div id="dyno-panel"><canvas id="dyno-canvas"></canvas></div>
+
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
-        // --- DynoGraph ---
+        // ── DynoGraph ──
         class DynoGraph {
             constructor(id) {
                 this.canvas = document.getElementById(id);
@@ -87,7 +92,7 @@
                 this.hist = [];
             }
             update(rpm) {
-                const torque = Math.max(0, 280 * (1 - Math.pow((rpm - 1500) / 1200, 2)));
+                const torque = Math.max(0, 18 * (1 - Math.pow((rpm - 800) / 700, 2)));
                 const hp = torque * rpm / 5252;
                 this.hist.push({ rpm, torque, hp });
                 if (this.hist.length > 180) this.hist.shift();
@@ -96,183 +101,315 @@
             draw() {
                 const { ctx, w, h, hist } = this;
                 ctx.clearRect(0, 0, w, h);
-                ctx.strokeStyle = '#1a3300'; ctx.lineWidth = 1;
+                ctx.strokeStyle = '#0d2200'; ctx.lineWidth = 1;
                 for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
                 if (hist.length < 2) return;
-                const draw = (key, color) => {
-                    ctx.strokeStyle = color; ctx.lineWidth = 2; ctx.beginPath();
-                    hist.forEach((p, i) => {
-                        const x = (i / 180) * w;
-                        const y = h - (p[key] / 600) * h;
-                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
-                    }); ctx.stroke();
-                };
-                draw('torque', '#ffaa00'); draw('hp', '#00aaff');
-                const cur = hist[hist.length - 1];
-                ctx.fillStyle = '#33ff00'; ctx.font = '13px monospace';
-                ctx.fillText(`RPM: ${Math.round(cur.rpm)}`, 8, 18);
-                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${Math.round(cur.torque)} ft-lbs`, 8, 36);
-                ctx.fillStyle = '#00aaff'; ctx.fillText(`Power: ${Math.round(cur.hp)} HP`, 8, 54);
+                [['torque', '#ffaa00', 40], ['hp', '#00aaff', 40]].forEach(([k, col, max]) => {
+                    ctx.strokeStyle = col; ctx.lineWidth = 2; ctx.beginPath();
+                    hist.forEach((p, i) => { const x = (i / 180) * w, y = h - (p[k] / max) * h; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
+                });
+                const c = hist[hist.length - 1];
+                ctx.fillStyle = '#33ff00'; ctx.font = '12px monospace';
+                ctx.fillText(`RPM: ${Math.round(c.rpm)}`, 8, 18);
+                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${c.torque.toFixed(1)} ft-lbs`, 8, 34);
+                ctx.fillStyle = '#00aaff'; ctx.fillText(`Power: ${c.hp.toFixed(2)} HP`, 8, 50);
             }
         }
 
-        // --- Scene Setup ---
+        // ── Scene ──
         const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x050505);
-        const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 500);
-        camera.position.set(0, 20, 35);
-        const renderer = new THREE.WebGLRenderer({ antialias: true });
+        scene.background = new THREE.Color(0x0a0a12);
+        scene.fog = new THREE.Fog(0x0a0a12, 40, 120);
+
+        const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.1, 200);
+        camera.position.set(0, 14, 28);
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(devicePixelRatio);
         renderer.setSize(innerWidth, innerHeight);
+        renderer.shadowMap.enabled = true;
+        renderer.shadowMap.type = THREE.PCFSoftShadowMap;
         renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        renderer.toneMappingExposure = 1.1;
         document.body.appendChild(renderer.domElement);
+
         const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; controls.target.set(0, 0, 0);
+        controls.enableDamping = true;
+        controls.target.set(0, 2, 0);
+        controls.minDistance = 8; controls.maxDistance = 60;
 
-        // --- Lighting ---
-        scene.add(new THREE.AmbientLight(0x222222));
-        const hemi = new THREE.HemisphereLight(0xffffff, 0x111111, 0.8);
+        // ── Lights ──
+        scene.add(new THREE.AmbientLight(0x304020, 0.8));
+        const hemi = new THREE.HemisphereLight(0xfff8e0, 0x111105, 0.6);
         scene.add(hemi);
-        const dir = new THREE.DirectionalLight(0xffffff, 2.5);
-        dir.position.set(15, 20, 10); scene.add(dir);
-        const hotLight = new THREE.PointLight(0xff3300, 0, 12);
-        hotLight.position.set(-4, 0, 0); scene.add(hotLight);
-        const coldLight = new THREE.PointLight(0x0044ff, 0.4, 12);
-        coldLight.position.set(4, 0, 0); scene.add(coldLight);
-        const grid = new THREE.GridHelper(80, 80, 0x222200, 0x111100);
-        grid.position.y = -10; scene.add(grid);
+        const sun = new THREE.DirectionalLight(0xffffff, 2.5);
+        sun.position.set(8, 18, 12);
+        sun.castShadow = true;
+        sun.shadow.mapSize.set(2048, 2048);
+        sun.shadow.camera.near = 0.5; sun.shadow.camera.far = 60;
+        sun.shadow.camera.left = -20; sun.shadow.camera.right = 20;
+        sun.shadow.camera.top = 20; sun.shadow.camera.bottom = -20;
+        scene.add(sun);
+        const fill = new THREE.DirectionalLight(0x8899ff, 0.7);
+        fill.position.set(-10, 8, -6); scene.add(fill);
 
-        // --- Materials ---
-        const MAT = {
-            hot: new THREE.MeshStandardMaterial({ color: 0xcc2200, roughness: 0.4, metalness: 0.7 }),
-            cold: new THREE.MeshStandardMaterial({ color: 0x3399cc, roughness: 0.3, metalness: 0.6 }),
-            steel: new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.4, metalness: 0.9 }),
-            chrome: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 1.0 }),
-            glass: new THREE.MeshPhysicalMaterial({ color: 0xaaddff, transmission: 0.9, opacity: 0.25, transparent: true, roughness: 0, metalness: 0, side: THREE.DoubleSide }),
-            glow: new THREE.MeshBasicMaterial({ color: 0xff4400, transparent: true, opacity: 0.0 }),
+        // Heat glow from spirit lamp
+        const heatLight = new THREE.PointLight(0xff8800, 1.2, 10);
+        heatLight.position.set(-7, 0.5, 0); scene.add(heatLight);
+
+        // Floor/surface
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(60, 60), new THREE.MeshStandardMaterial({ color: 0x111115, roughness: 0.9, metalness: 0.1 }));
+        floor.rotation.x = -Math.PI / 2; floor.position.y = -0.5; floor.receiveShadow = true; scene.add(floor);
+
+        // ── Materials ──
+        const M = {
+            silver: new THREE.MeshStandardMaterial({ color: 0xcdcdcd, roughness: 0.12, metalness: 0.95 }),
+            aluminum: new THREE.MeshStandardMaterial({ color: 0xc0c0c0, roughness: 0.25, metalness: 0.8 }),
+            polished: new THREE.MeshStandardMaterial({ color: 0xe8e8e8, roughness: 0.04, metalness: 1.0, envMapIntensity: 1.5 }),
+            chrome: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.02, metalness: 1.0 }),
+            glass: new THREE.MeshPhysicalMaterial({ color: 0xaaccee, transmission: 0.85, opacity: 0.3, transparent: true, roughness: 0.02, metalness: 0.05, side: THREE.DoubleSide, thickness: 0.5 }),
+            rubber: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 1.0, metalness: 0.0 }),
+            copper: new THREE.MeshStandardMaterial({ color: 0xcc7722, roughness: 0.3, metalness: 0.85 }),
+            gold: new THREE.MeshStandardMaterial({ color: 0xccaa44, roughness: 0.2, metalness: 0.95 }),
+            darkMetal: new THREE.MeshStandardMaterial({ color: 0x444444, roughness: 0.5, metalness: 0.8 }),
+            glassBulb: new THREE.MeshPhysicalMaterial({ color: 0xeeeeff, transmission: 0.92, opacity: 0.15, transparent: true, roughness: 0.0, metalness: 0.0, side: THREE.DoubleSide }),
+            red: new THREE.MeshStandardMaterial({ color: 0xcc1100, roughness: 0.4, metalness: 0.3 }),
         };
 
-        // --- Stirling Engine Geometry ---
-        // Configuration: Alpha Stirling (two pistons, two cylinders)
-        // Hot cylinder (left, red), Cold cylinder (right, blue), connected by regenerator tube
+        function addShadow(m) { m.castShadow = true; m.receiveShadow = true; return m; }
 
-        const HOT_Z = -5, COLD_Z = 5;
-        const CRANK_R = 2.5, CYL_R = 2.2, ROD_L = 7;
+        // ── BASEPLATE ──
+        // Rectangular brushed-aluminum plate with chamfered look
+        const basePlate = addShadow(new THREE.Mesh(
+            new THREE.BoxGeometry(18, 0.8, 10),
+            new THREE.MeshStandardMaterial({ color: 0xb8b8b8, roughness: 0.3, metalness: 0.75 })
+        ));
+        basePlate.position.set(0, 0, 0); scene.add(basePlate);
 
-        // Cylinders
-        const hotCylGeo = new THREE.CylinderGeometry(CYL_R + 0.15, CYL_R + 0.15, 16, 32, 1, true);
-        const hotCyl = new THREE.Mesh(hotCylGeo, MAT.glass); hotCyl.position.set(0, 0, HOT_Z); scene.add(hotCyl);
-        const hotFlange1 = new THREE.Mesh(new THREE.CylinderGeometry(CYL_R + 0.6, CYL_R + 0.6, 0.6, 32), MAT.hot);
-        hotFlange1.position.set(0, 8, HOT_Z); scene.add(hotFlange1);
-        const hotFlange2 = new THREE.Mesh(new THREE.CylinderGeometry(CYL_R + 0.6, CYL_R + 0.6, 0.6, 32), MAT.hot);
-        hotFlange2.position.set(0, -8, HOT_Z); scene.add(hotFlange2);
+        // Rubber feet (4 corners)
+        [[-7.5, -4.5], [7.5, -4.5], [-7.5, 4.5], [7.5, 4.5]].forEach(([x, z]) => {
+            const f = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.7, 0.8, 0.5, 16), M.rubber));
+            f.position.set(x, -0.65, z); scene.add(f);
+        });
 
-        const coldCylGeo = new THREE.CylinderGeometry(CYL_R + 0.15, CYL_R + 0.15, 16, 32, 1, true);
-        const coldCyl = new THREE.Mesh(coldCylGeo, MAT.glass); coldCyl.position.set(0, 0, COLD_Z); scene.add(coldCyl);
-        const coldFlange1 = new THREE.Mesh(new THREE.CylinderGeometry(CYL_R + 0.6, CYL_R + 0.6, 0.6, 32), MAT.cold);
-        coldFlange1.position.set(0, 8, COLD_Z); scene.add(coldFlange1);
-        const coldFlange2 = new THREE.Mesh(new THREE.CylinderGeometry(CYL_R + 0.6, CYL_R + 0.6, 0.6, 32), MAT.cold);
-        coldFlange2.position.set(0, -8, COLD_Z); scene.add(coldFlange2);
+        // ── DISPLACER CYLINDER (horizontal, pointing left) ──
+        // Glass tube
+        const dispCylinder = addShadow(new THREE.Mesh(
+            new THREE.CylinderGeometry(1.5, 1.5, 10, 32, 1, true),
+            M.glass
+        ));
+        dispCylinder.rotation.z = Math.PI / 2;
+        dispCylinder.position.set(-5, 3.5, 0); scene.add(dispCylinder);
 
-        // Hot end heater (glowing rings)
-        for (let i = 0; i < 5; i++) {
-            const ring = new THREE.Mesh(new THREE.TorusGeometry(CYL_R + 0.7, 0.2, 8, 32), MAT.hot);
-            ring.rotation.x = Math.PI / 2; ring.position.set(0, -5 + i * 1.2, HOT_Z); scene.add(ring);
+        // Aluminum end cap (LEFT / closed hot end)
+        const hotCap = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 0.8, 24), M.aluminum));
+        hotCap.rotation.z = Math.PI / 2; hotCap.position.set(-10.2, 3.5, 0); scene.add(hotCap);
+        // Heater ribbed collar near hot end
+        for (let i = 0; i < 4; i++) {
+            const rib = addShadow(new THREE.Mesh(new THREE.TorusGeometry(1.75, 0.12, 8, 24), M.copper));
+            rib.rotation.x = Math.PI / 2; rib.rotation.z = Math.PI / 2; rib.position.set(-9 + i * 0.5, 3.5, 0); scene.add(rib);
         }
-        // Cold end cooler fins
-        for (let i = 0; i < 5; i++) {
-            const fin = new THREE.Mesh(new THREE.TorusGeometry(CYL_R + 1.2, 0.08, 6, 32), MAT.cold);
-            fin.rotation.x = Math.PI / 2; fin.position.set(0, -5 + i * 1.2, COLD_Z); scene.add(fin);
+
+        // Aluminum end cap (RIGHT / hub end)
+        const hubCap = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(1.7, 1.7, 1.2, 24), M.aluminum));
+        hubCap.rotation.z = Math.PI / 2; hubCap.position.set(-0.2, 3.5, 0); scene.add(hubCap);
+
+        // Clamping rings on displacer tube
+        for (let i = 0; i < 6; i++) {
+            const ring = new THREE.Mesh(new THREE.TorusGeometry(1.55, 0.1, 8, 24), M.aluminum);
+            ring.rotation.x = Math.PI / 2; ring.rotation.z = Math.PI / 2;
+            ring.position.set(-8.5 + i * 1.4, 3.5, 0); scene.add(ring);
         }
 
-        // Regenerator tube connecting cylinders
-        const regGeo = new THREE.CylinderGeometry(0.9, 0.9, 10, 16);
-        const reg = new THREE.Mesh(regGeo, MAT.steel);
-        reg.rotation.z = Math.PI / 2; reg.position.set(0, -2, 0); scene.add(reg);
+        // ── POWER CYLINDER SUPPORT COLUMN (center pedestal) ──
+        const pedestal = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(1.0, 1.2, 3.0, 16), M.aluminum));
+        pedestal.position.set(0, 2.0, 0); scene.add(pedestal);
 
-        // Pistons
-        const hotPistonGeo = new THREE.CylinderGeometry(CYL_R - 0.15, CYL_R - 0.15, 1.5, 32);
-        const hotPiston = new THREE.Mesh(hotPistonGeo, MAT.chrome);
-        hotPiston.position.set(0, 0, HOT_Z); scene.add(hotPiston);
+        // ── POWER CYLINDER (small, sits on top of hub) ──
+        const POWER_CYL_R = 0.8;
+        const powerCylOuter = addShadow(new THREE.Mesh(
+            new THREE.CylinderGeometry(POWER_CYL_R + 0.1, POWER_CYL_R + 0.1, 3.5, 20),
+            M.aluminum
+        ));
+        powerCylOuter.position.set(0.3, 5.6, 0); scene.add(powerCylOuter);
 
-        const coldPistonGeo = new THREE.CylinderGeometry(CYL_R - 0.15, CYL_R - 0.15, 1.5, 32);
-        const coldPiston = new THREE.Mesh(coldPistonGeo, MAT.chrome);
-        coldPiston.position.set(0, 0, COLD_Z); scene.add(coldPiston);
+        // Glass liner for power cylinder
+        const powerCylGlass = new THREE.Mesh(
+            new THREE.CylinderGeometry(POWER_CYL_R, POWER_CYL_R, 3.4, 20, 1, true),
+            M.glass
+        );
+        powerCylGlass.position.set(0.3, 5.6, 0); scene.add(powerCylGlass);
 
-        // Crankshaft
-        const crankGroup = new THREE.Group();
-        scene.add(crankGroup);
-        crankGroup.position.y = -10;
-        const crankShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, 14, 20), MAT.steel);
-        crankShaft.rotation.z = Math.PI / 2; crankGroup.add(crankShaft);
-        // Hot crank throw (90° offset from cold)
-        const hotThrow = new THREE.Group();
-        hotThrow.position.z = HOT_Z;
-        const hotPin = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.5, 16), MAT.chrome);
-        hotPin.rotation.z = Math.PI / 2; hotPin.position.y = CRANK_R; hotThrow.add(hotPin);
-        const hotWeb = new THREE.Mesh(new THREE.BoxGeometry(0.8, CRANK_R + 0.4, 1.2), MAT.steel);
-        hotWeb.position.y = CRANK_R / 2; hotThrow.add(hotWeb);
-        crankGroup.add(hotThrow);
+        // Power cylinder head (top cap, aluminum)
+        const cylHead = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(POWER_CYL_R + 0.2, POWER_CYL_R + 0.2, 0.5, 20), M.polished));
+        cylHead.position.set(0.3, 7.45, 0); scene.add(cylHead);
 
-        const coldThrow = new THREE.Group();
-        coldThrow.position.z = COLD_Z;
-        const coldPin = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.45, 1.5, 16), MAT.chrome);
-        coldPin.rotation.z = Math.PI / 2; coldPin.position.y = CRANK_R; coldThrow.add(coldPin);
-        const coldWeb = new THREE.Mesh(new THREE.BoxGeometry(0.8, CRANK_R + 0.4, 1.2), MAT.steel);
-        coldWeb.position.y = CRANK_R / 2; coldThrow.add(coldWeb);
-        crankGroup.add(coldThrow);
+        // Power piston
+        const powerPiston = addShadow(new THREE.Mesh(
+            new THREE.CylinderGeometry(POWER_CYL_R - 0.08, POWER_CYL_R - 0.08, 0.8, 20),
+            M.polished
+        ));
+        powerPiston.position.set(0.3, 5.6, 0); scene.add(powerPiston);
 
-        // Connecting rods
-        const hotRod = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, ROD_L - 1, 6, 12), MAT.steel);
-        scene.add(hotRod);
-        const coldRod = new THREE.Mesh(new THREE.CapsuleGeometry(0.22, ROD_L - 1, 6, 12), MAT.steel);
-        scene.add(coldRod);
+        // Piston rod (thin, chrome)
+        const pistonRod = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 4.5, 12), M.chrome));
+        pistonRod.position.set(0.3, 5.6, 0); scene.add(pistonRod);
 
-        // Flywheel
-        const flywheel = new THREE.Mesh(new THREE.CylinderGeometry(4, 4, 0.8, 48), MAT.steel);
-        flywheel.rotation.z = Math.PI / 2; flywheel.position.set(0, -10, -8); scene.add(flywheel);
-        const flywheelSpokes = new THREE.Mesh(new THREE.TorusGeometry(2.5, 0.15, 8, 6), MAT.chrome);
-        flywheelSpokes.rotation.x = Math.PI / 2; flywheelSpokes.position.set(0, -10, -8); scene.add(flywheelSpokes);
+        // ── FLYWHEEL ──
+        // Built from: outer ring (torus) + 4 cross-spokes (flat boxes) + hub + 3 counterbore holes (simulated with indented caps)
+        const FLYWHEEL_R = 3.6;
+        const flywheelGroup = new THREE.Group();
+        flywheelGroup.position.set(6, 4.5, 0);
+        scene.add(flywheelGroup);
 
-        // Glow mesh on hot cylinder
-        const glowMesh = new THREE.Mesh(new THREE.CylinderGeometry(CYL_R + 0.5, CYL_R + 0.5, 10, 32, 1, true), MAT.glow);
-        glowMesh.position.set(0, -3, HOT_Z); scene.add(glowMesh);
+        // Outer rim (torus)
+        const rimGeo = new THREE.TorusGeometry(FLYWHEEL_R, 0.35, 16, 60);
+        const rim = addShadow(new THREE.Mesh(rimGeo, M.polished));
+        rim.rotation.x = Math.PI / 2; flywheelGroup.add(rim);
 
-        // --- GUI ---
-        const params = { rpm: 200, autoRotate: false };
+        // Disc body with extruded shape (simpler — use a flat cylinder disc)
+        const discGeo = new THREE.CylinderGeometry(FLYWHEEL_R - 0.4, FLYWHEEL_R - 0.4, 0.35, 48);
+        const disc = addShadow(new THREE.Mesh(discGeo, M.polished));
+        disc.rotation.x = 0; flywheelGroup.add(disc);
+
+        // 3 Lightening holes (simulated as dark recessed cylinders)
+        const holeR = 0.8, holeDepth = 0.4;
+        const holeAngles = [0, Math.PI * 2 / 3, Math.PI * 4 / 3];
+        holeAngles.forEach(a => {
+            const hole = new THREE.Mesh(
+                new THREE.CylinderGeometry(holeR, holeR, holeDepth + 0.02, 20),
+                new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.8, metalness: 0.3 })
+            );
+            hole.position.set(Math.sin(a) * 2.1, holeDepth / 2 + 0.001, Math.cos(a) * 2.1);
+            flywheelGroup.add(hole);
+        });
+
+        // Hub (center cylinder)
+        const hub = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 0.7, 16), M.polished));
+        flywheelGroup.add(hub);
+
+        // Crank eccentric pin on flywheel face
+        const crankEcc = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.55, 12), M.chrome));
+        crankEcc.position.set(Math.sin(0) * 2.1, 0.38, Math.cos(0) * 2.1);
+        flywheelGroup.add(crankEcc);
+
+        // ── FLYWHEEL BEARING POST ──
+        const bearingPost = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.6, 4.0, 16), M.aluminum));
+        bearingPost.position.set(6, 2.5, 0); scene.add(bearingPost);
+        const bearingMount = addShadow(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.5, 16), M.aluminum));
+        bearingMount.position.set(6, 4.6, 0); scene.add(bearingMount);
+
+        // ── CONNECTING ROD (piston → crank pin) ──
+        const conRod = addShadow(new THREE.Mesh(new THREE.CapsuleGeometry(0.14, 3.8, 4, 10), M.polished));
+        conRod.position.set(3.5, 5.6, 0); scene.add(conRod);
+
+        // ── DISPLACER CONNECTING ROD (hub → displacer piston inside tube) ──
+        const dispRod = addShadow(new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 5.5, 4, 10), M.chrome));
+        dispRod.rotation.z = Math.PI / 2; dispRod.position.set(-2.5, 3.5, 0.8); scene.add(dispRod);
+
+        // ── SPIRIT LAMP ──
+        const lampGroup = new THREE.Group();
+        lampGroup.position.set(-8.5, 0.5, 0);
+        scene.add(lampGroup);
+
+        // Glass globe (lower, rounded)
+        const globeGeo = new THREE.SphereGeometry(1.0, 24, 20);
+        const globe = new THREE.Mesh(globeGeo, M.glassBulb);
+        globe.position.y = 0; lampGroup.add(globe);
+
+        // Lamp body fill (oil look)
+        const oilGeo = new THREE.SphereGeometry(0.85, 16, 12, 0, Math.PI * 2, 0, Math.PI * 0.55);
+        const oil = new THREE.Mesh(oilGeo, new THREE.MeshStandardMaterial({ color: 0xddaa55, roughness: 0.1, metalness: 0.0, transparent: true, opacity: 0.6 }));
+        oil.rotation.x = Math.PI; oil.position.y = 0.05; lampGroup.add(oil);
+
+        // Gold metal cap/collar
+        const lampCap = new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.5, 0.5, 16), M.gold);
+        lampCap.position.y = 0.9; lampGroup.add(lampCap);
+
+        // Wick tube
+        const wick = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 0.8, 8), new THREE.MeshStandardMaterial({ color: 0xddccaa, roughness: 1.0, metalness: 0.0 }));
+        wick.position.y = 1.4; lampGroup.add(wick);
+
+        // Flame (small glowing cone)
+        const flameMat = new THREE.MeshBasicMaterial({ color: 0xff8800, transparent: true, opacity: 0.85 });
+        const flame = new THREE.Mesh(new THREE.ConeGeometry(0.12, 0.4, 8), flameMat);
+        flame.position.y = 1.85; lampGroup.add(flame);
+
+        // ── SMALL GENERATOR/ALTERNATOR BOX ──
+        const genBox = addShadow(new THREE.Mesh(new THREE.BoxGeometry(1.8, 1.4, 1.6),
+            new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.4 })
+        ));
+        genBox.position.set(1.2, 1.2, 0); scene.add(genBox);
+        // Vent holes on face
+        for (let row = 0; row < 2; row++) for (let col = 0; col < 3; col++) {
+            const vent = new THREE.Mesh(new THREE.CylinderGeometry(0.13, 0.13, 0.1, 8),
+                new THREE.MeshStandardMaterial({ color: 0x333333, roughness: 0.9, metalness: 0.0 })
+            );
+            vent.rotation.x = Math.PI / 2;
+            vent.position.set(1.2 - 0.4 + col * 0.4, 1.0 + row * 0.45, 0.85); scene.add(vent);
+        }
+        // LED indicator
+        const led = new THREE.Mesh(new THREE.SphereGeometry(0.1, 8, 8),
+            new THREE.MeshBasicMaterial({ color: 0x00ff44, transparent: true, opacity: 0.9 })
+        );
+        led.position.set(1.2, 0.55, 0.85); scene.add(led);
+
+        // Connecting wires (simple wire look)
+        const wireMat = new THREE.MeshStandardMaterial({ color: 0xcc1100, roughness: 1.0, metalness: 0.0 });
+        const wirePath = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(1.2, 0.55, 0.85),
+            new THREE.Vector3(0.5, 0.3, 0.9),
+            new THREE.Vector3(0.0, 0.1, 0.8),
+        ]);
+        const wireMesh = new THREE.Mesh(new THREE.TubeGeometry(wirePath, 8, 0.05, 6, false), wireMat);
+        scene.add(wireMesh);
+
+        // ── GUI ──
+        const params = { rpm: 90, autoRotate: false };
         const gui = new GUI({ title: 'Engine Controls' });
-        gui.add(params, 'rpm', 0, 2000, 1).name('RPM');
+        gui.add(params, 'rpm', 0, 1500, 1).name('RPM');
         gui.add(params, 'autoRotate').name('Auto Rotate');
 
         const dyno = new DynoGraph('dyno-canvas');
         document.getElementById('loading').style.opacity = 0;
 
-        // --- Animation ---
+        // ── ANIMATION ──
         let crankAngle = 0, lastTime = 0;
 
         function animate(time) {
             requestAnimationFrame(animate);
-            const dt = Math.min((time - lastTime) / 1000, 0.05); lastTime = time;
-            const omega = (params.rpm * Math.PI * 2) / 60;
-            crankAngle += omega * dt;
+            const dt = Math.min((time - lastTime) / 1000, 0.05);
+            lastTime = time;
 
-            crankGroup.rotation.z = crankAngle;
+            crankAngle += (params.rpm * Math.PI * 2 / 60) * dt;
 
-            // Hot piston: follows crankAngle
-            const hotY = crankGroup.position.y + CRANK_R * Math.sin(crankAngle) + ROD_L * 0.85;
-            hotPiston.position.y = hotY;
-            // Cold piston: 90° offset
-            const coldY = crankGroup.position.y + CRANK_R * Math.sin(crankAngle + Math.PI / 2) + ROD_L * 0.85;
-            coldPiston.position.y = coldY;
+            // Flywheel rotates
+            flywheelGroup.rotation.y = crankAngle;
 
-            // Update rods
-            const crankHotX = crankGroup.position.y + CRANK_R * Math.sin(crankAngle);
-            hotRod.position.set(0, (hotY + crankHotX) / 2, HOT_Z);
-            hotRod.rotation.z = Math.atan2(hotY - crankHotX, 0);
+            // Power piston: simple crank motion
+            const pistonY = 5.6 + Math.sin(crankAngle) * 1.1;
+            powerPiston.position.y = pistonY;
+            pistonRod.position.y = pistonY - 0.7;
+            pistonRod.scale.y = 0.8 + Math.sin(crankAngle) * 0.2;
 
-            // Glow intensity based on hot piston position
-            const heatIntensity = Math.max(0, (hotY - crankGroup.position.y) / (CRANK_R * 2));
-            MAT.glow.opacity = 0.35 * heatIntensity;
-            hotLight.intensity = 3 * heatIntensity;
+            // Connecting rod angle
+            const crankPinX = 6 + Math.sin(crankAngle) * 2.0;
+            const crankPinY = 4.5 + Math.cos(crankAngle) * 1.8;
+            const midX = (0.3 + crankPinX) / 2;
+            const midY = (pistonY + crankPinY) / 2;
+            conRod.position.set(midX, midY, 0);
+            const dx = crankPinX - 0.3, dy = crankPinY - pistonY;
+            conRod.rotation.z = Math.atan2(dx, dy);
+
+            // Displacer phase: 90° behind power piston
+            const dispPhase = crankAngle + Math.PI / 2;
+            dispRod.position.x = -5 + Math.sin(dispPhase) * 1.5;
+
+            // Flicker flame and heat glow
+            const flicker = 0.8 + Math.random() * 0.4;
+            flameMat.opacity = 0.7 + Math.random() * 0.25;
+            heatLight.intensity = 1.0 * flicker;
+            heatLight.color.setHSL(0.08 + Math.random() * 0.03, 1.0, 0.5);
 
             if (params.autoRotate) controls.azimuthAngle += 0.003;
             controls.update();
@@ -280,6 +417,7 @@
             renderer.render(scene, camera);
         }
         animate(0);
+
         window.addEventListener('resize', () => {
             camera.aspect = innerWidth / innerHeight;
             camera.updateProjectionMatrix();
