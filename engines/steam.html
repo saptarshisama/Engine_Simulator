@@ -4,12 +4,13 @@
 <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Steam Engine — Stationary Single-Cylinder</title>
+    <title>Steam Engine — Stationary</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
-            background: #0a0a0a;
+            background: #060a06;
+            font-family: 'Courier New', monospace;
         }
 
         #info {
@@ -19,7 +20,6 @@
             text-align: center;
             pointer-events: none;
             z-index: 10;
-            font-family: 'Courier New', monospace;
         }
 
         #info h1 {
@@ -32,7 +32,7 @@
 
         #info p {
             color: #1ea300;
-            font-size: 0.85rem;
+            font-size: .85rem;
             margin: 4px 0 0;
         }
 
@@ -41,7 +41,6 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            font-family: monospace;
             font-size: 1.4rem;
             color: #33ff00;
         }
@@ -52,7 +51,7 @@
             right: 20px;
             width: 300px;
             height: 140px;
-            background: rgba(0, 0, 0, 0.88);
+            background: rgba(0, 0, 0, .88);
             border: 1px solid #1ea300;
             padding: 8px;
             pointer-events: none;
@@ -64,351 +63,355 @@
         }
     </style>
     <script
-        type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }</script>
+        type="importmap">{"imports":{"three":"https://unpkg.com/three@0.160.0/build/three.module.js","three/addons/":"https://unpkg.com/three@0.160.0/examples/jsm/"}}</script>
 </head>
 
 <body>
     <div id="info">
-        <h1>&gt; STATIONARY STEAM ENGINE // SINGLE-CYLINDER OPEN-FRAME</h1>
-        <p>External Combustion | Steam Expanding | Centrifugal Governor | 19th Century Design</p>
+        <h1>&gt; STATIONARY STEAM ENGINE // SINGLE-CYLINDER</h1>
+        <p>External Combustion | Steam Piston | Centrifugal Governor | Crosshead + Crank</p>
     </div>
     <div id="loading">&gt; BUILDING STEAM PRESSURE...</div>
     <div id="dyno-panel"><canvas id="dyno-canvas"></canvas></div>
-
     <script type="module">
         import * as THREE from 'three';
         import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
         import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
 
         class DynoGraph {
-            constructor(id) { this.canvas = document.getElementById(id); this.ctx = this.canvas.getContext('2d'); this.w = this.canvas.width = this.canvas.offsetWidth; this.h = this.canvas.height = this.canvas.offsetHeight; this.hist = []; }
-            update(rpm) { const t = Math.max(0, 320 - rpm * 0.1); const hp = t * rpm / 5252; this.hist.push({ rpm, torque: t, hp }); if (this.hist.length > 180) this.hist.shift(); this.draw(); }
+            constructor(id) { this.c = document.getElementById(id); this.ctx = this.c.getContext('2d'); this.w = this.c.width = this.c.offsetWidth; this.h = this.c.height = this.c.offsetHeight; this.hist = []; }
+            update(rpm) { const t = Math.max(0, 320 - rpm * .1), hp = t * rpm / 5252; this.hist.push({ rpm, t, hp }); if (this.hist.length > 180) this.hist.shift(); this.draw(); }
             draw() {
-                const { ctx, w, h, hist } = this; ctx.clearRect(0, 0, w, h);
-                ctx.strokeStyle = '#0d2200'; ctx.lineWidth = 1;
+                const { ctx, w, h, hist } = this; ctx.clearRect(0, 0, w, h); ctx.strokeStyle = '#0d2200'; ctx.lineWidth = 1;
                 for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
                 if (hist.length < 2) return;
-                [['torque', '#ffaa00', 500], ['hp', '#00aaff', 500]].forEach(([k, c, mx]) => {
+                [['t', '#ffaa00', 500], ['hp', '#00aaff', 500]].forEach(([k, c, mx]) => {
                     ctx.strokeStyle = c; ctx.lineWidth = 2; ctx.beginPath();
                     hist.forEach((p, i) => { const x = (i / 180) * w, y = h - (p[k] / mx) * h; i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y); }); ctx.stroke();
                 });
                 const c = hist[hist.length - 1];
                 ctx.fillStyle = '#33ff00'; ctx.font = '12px monospace'; ctx.fillText(`RPM: ${Math.round(c.rpm)}`, 8, 18);
-                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${Math.round(c.torque)} ft-lbs`, 8, 34);
+                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${Math.round(c.t)} ft-lbs`, 8, 34);
                 ctx.fillStyle = '#00aaff'; ctx.fillText(`Power: ${Math.round(c.hp)} HP`, 8, 50);
             }
         }
 
-        const scene = new THREE.Scene();
-        scene.background = new THREE.Color(0x0a0a0a);
-        scene.fog = new THREE.Fog(0x0a0a0a, 60, 150);
-
-        const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, 0.1, 300);
-        camera.position.set(18, 16, 28);
-
+        const scene = new THREE.Scene(); scene.background = new THREE.Color(0x060a06);
+        const camera = new THREE.PerspectiveCamera(42, innerWidth / innerHeight, .1, 300);
+        camera.position.set(-4, 14, 38);
         const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
         renderer.setPixelRatio(devicePixelRatio); renderer.setSize(innerWidth, innerHeight);
         renderer.shadowMap.enabled = true; renderer.shadowMap.type = THREE.PCFSoftShadowMap;
-        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.0;
+        renderer.toneMapping = THREE.ACESFilmicToneMapping; renderer.toneMappingExposure = 1.2;
         document.body.appendChild(renderer.domElement);
-
         const controls = new OrbitControls(camera, renderer.domElement);
-        controls.enableDamping = true; controls.target.set(0, 5, 0);
-        controls.minDistance = 12; controls.maxDistance = 80;
+        controls.enableDamping = true; controls.target.set(2, 6, 0);
 
-        scene.add(new THREE.AmbientLight(0x303030, 1.0));
-        const sun = new THREE.DirectionalLight(0xfff5e0, 2.8);
-        sun.position.set(15, 25, 12); sun.castShadow = true;
+        /* Lighting */
+        scene.add(new THREE.AmbientLight(0x333333, 1.5));
+        const hemi = new THREE.HemisphereLight(0xfff5e0, 0x222222, 0.9); scene.add(hemi);
+        const sun = new THREE.DirectionalLight(0xffffff, 3.0);
+        sun.position.set(12, 22, 15); sun.castShadow = true;
         sun.shadow.mapSize.set(2048, 2048);
-        sun.shadow.camera.left = -30; sun.shadow.camera.right = 30;
-        sun.shadow.camera.top = 30; sun.shadow.camera.bottom = -30;
+        sun.shadow.camera.left = -35; sun.shadow.camera.right = 35;
+        sun.shadow.camera.top = 35; sun.shadow.camera.bottom = -35;
         sun.shadow.camera.far = 100; scene.add(sun);
-        const fill = new THREE.DirectionalLight(0x8899bb, 0.9);
-        fill.position.set(-12, 10, -8); scene.add(fill);
+        scene.add(Object.assign(new THREE.DirectionalLight(0x8899bb, .9), { position: new THREE.Vector3(-12, 8, -8) }));
 
-        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100),
-            new THREE.MeshStandardMaterial({ color: 0x151510, roughness: 0.95, metalness: 0.05 }));
+        const floor = new THREE.Mesh(new THREE.PlaneGeometry(100, 100), new THREE.MeshStandardMaterial({ color: 0x0f0e0a, roughness: .95, metalness: .05 }));
         floor.rotation.x = -Math.PI / 2; floor.receiveShadow = true; scene.add(floor);
 
-        // ── MATERIALS ──
+        /* Materials */
         const M = {
-            green: new THREE.MeshStandardMaterial({ color: 0x2d5a2d, roughness: 0.7, metalness: 0.3 }),
-            darkGrn: new THREE.MeshStandardMaterial({ color: 0x1c3d1c, roughness: 0.8, metalness: 0.25 }),
-            red: new THREE.MeshStandardMaterial({ color: 0x992211, roughness: 0.5, metalness: 0.35 }),
-            brass: new THREE.MeshStandardMaterial({ color: 0xcc9922, roughness: 0.25, metalness: 0.9 }),
-            steel: new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.35, metalness: 0.9 }),
-            chrome: new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: 0.05, metalness: 1.0 }),
-            iron: new THREE.MeshStandardMaterial({ color: 0x222222, roughness: 0.9, metalness: 0.4 }),
-            darkIron: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.92, metalness: 0.35 }),
+            green: new THREE.MeshStandardMaterial({ color: 0x2d5a2d, roughness: .65, metalness: .35 }),
+            dkGrn: new THREE.MeshStandardMaterial({ color: 0x1c3d1c, roughness: .8, metalness: .25 }),
+            red: new THREE.MeshStandardMaterial({ color: 0x992211, roughness: .45, metalness: .4 }),
+            dkRed: new THREE.MeshStandardMaterial({ color: 0x661100, roughness: .6, metalness: .3 }),
+            brass: new THREE.MeshStandardMaterial({ color: 0xcc9922, roughness: .25, metalness: .9 }),
+            steel: new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: .35, metalness: .9 }),
+            chrome: new THREE.MeshStandardMaterial({ color: 0xeeeeee, roughness: .05, metalness: 1.0 }),
+            iron: new THREE.MeshStandardMaterial({ color: 0x242424, roughness: .88, metalness: .45 }),
+            dkIron: new THREE.MeshStandardMaterial({ color: 0x111111, roughness: .92, metalness: .35 }),
         };
+        function S(m) { m.castShadow = true; m.receiveShadow = true; return m; }
 
-        function A(m) { m.castShadow = true; m.receiveShadow = true; return m; }
+        /* ──────────────────────────────────────────────────────────
+           LAYOUT (viewed from front, camera at z=+38):
+           Bedplate at y=0, extends x=-12 to x=14
+           Flywheel center: FW = (-9, 9, 0)   – large, on LEFT
+           Flywheel rotates around Z (in X-Y plane)
+           Crank pin at radius CRANK_R from FW, world = (FW.x - CRANK_R·sin(θ), FW.y + CRANK_R·cos(θ))
 
-        // ── BEDPLATE (heavy green cast iron) ──
-        const bed = A(new THREE.Mesh(new THREE.BoxGeometry(26, 2, 10), M.green));
-        bed.position.set(0, 1, 0); scene.add(bed);
-        // Raised side rails on bedplate
-        [[-11.5, 0], [11.5, 0]].forEach(([x]) => {
-            const rail = A(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 9), M.darkGrn));
+           Crosshead slides HORIZONTALLY at y = FW.y, on guide rails from x=-3 to x=10
+           Crosshead x = FW.x + sqrt(ROD_L² - 0) → FW.x + ROD_L when crank is at 0°
+           More precisely the crosshead x satisfies: (cx-crankPinX)²+(FW.y-crankPinY)² = ROD_L²
+
+           Piston rod goes VERTICALLY from crosshead UP into the cylinder
+           Cylinder at: x=CYL_X  y center=CYL_Y, piston moves between CYL_Y-CYL_H and CYL_Y+CYL_H
+           ────────────────────────────────────────────────────────── */
+        const FW = { x: -9, y: 9 };
+        const CRANK_R = 4.2;
+        const ROD_L = 9.5;
+
+        /* ── Bedplate ── */
+        const bed = S(new THREE.Mesh(new THREE.BoxGeometry(28, 2, 10), M.green));
+        bed.position.set(1, 1, 0); scene.add(bed);
+        // rail edges
+        [-13, 15].forEach(x => {
+            const rail = S(new THREE.Mesh(new THREE.BoxGeometry(2, 1, 9), M.dkGrn));
             rail.position.set(x, 2.5, 0); scene.add(rail);
         });
-        // Mounting bolts on bedplate edges
-        for (let i = 0; i < 6; i++) {
-            [-4, 4].forEach(z => {
-                const bolt = A(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.5, 6), M.steel));
-                bolt.position.set(-10 + i * 4, 2.05, z); scene.add(bolt);
-            });
-        }
+        // mounting bolts on bedplate
+        for (let i = 0; i < 7; i++) [-4, 4].forEach(z => {
+            const b = S(new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, .45, 6), M.steel));
+            b.position.set(-11 + i * 4, 2.05, z); scene.add(b);
+        });
 
-        // ── BIG RED FLYWHEEL (LEFT) ──
-        // Position: x=-10, y-axis on flywheel shaft
-        const FW_X = -10, FW_Y = 8, FW_R = 7;
+        /* ── Flywheel bearing stands (A-frame either side of flywheel) ── */
+        [-2.5, 2.5].forEach(z => {
+            const col = S(new THREE.Mesh(new THREE.CylinderGeometry(.55, .75, FW.y - 1, 10), M.green));
+            col.position.set(FW.x, (FW.y - 1) / 2 + 1, z); scene.add(col);
+            const bear = S(new THREE.Mesh(new THREE.CylinderGeometry(.95, .95, .6, 16), M.iron));
+            bear.rotation.x = Math.PI / 2; bear.position.set(FW.x, FW.y, z); scene.add(bear);
+        });
+        // Crankshaft stub
+        const crankStub = S(new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, 6, 16), M.steel));
+        crankStub.rotation.x = Math.PI / 2; crankStub.position.set(FW.x, FW.y, 0); scene.add(crankStub);
+
+        /* ── FLYWHEEL GROUP (rotates around Z) ── */
         const flywheelGroup = new THREE.Group();
-        flywheelGroup.position.set(FW_X, FW_Y, 0);
+        flywheelGroup.position.set(FW.x, FW.y, 0);
         scene.add(flywheelGroup);
 
-        // Outer rim
-        const fwRim = A(new THREE.Mesh(new THREE.TorusGeometry(FW_R, 0.55, 16, 72), M.steel));
-        fwRim.rotation.x = Math.PI / 2; flywheelGroup.add(fwRim);
+        // Outer steel rim
+        S(flywheelGroup.add(new THREE.Mesh(new THREE.TorusGeometry(6.8, .6, 16, 72), M.steel)) || flywheelGroup.children[0]);
+        const fwRim = flywheelGroup.children[0]; if (fwRim.isMesh) { fwRim.rotation.x = Math.PI / 2; }
 
-        // 8 Spokes
+        // 8 Red spokes (these are FLAT in the flywheel plane)
         for (let i = 0; i < 8; i++) {
             const angle = (i / 8) * Math.PI * 2;
-            const spoke = A(new THREE.Mesh(new THREE.BoxGeometry(0.45, FW_R * 2 - 1.2, 0.6), M.red));
-            spoke.rotation.y = angle;
-            flywheelGroup.add(spoke);
+            // Spoke extends from hub (r=1.5) to rim (r=6.5), as a flat box in XY plane of flywheel
+            const sp = S(new THREE.Mesh(new THREE.BoxGeometry(.5, 5.0, .65), M.red));
+            sp.position.set(Math.sin(angle) * 3.3, Math.cos(angle) * 3.3, 0);
+            sp.rotation.z = -angle;
+            flywheelGroup.add(sp);
         }
-
-        // Spoke inner fill with slight bevel (visual connector)
-        const spokeFill = A(new THREE.Mesh(new THREE.CylinderGeometry(FW_R * 0.7, FW_R * 0.7, 0.5, 48), M.red));
-        flywheelGroup.add(spokeFill);
-
-        // Hub
-        const fwHub = A(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, 0.9, 24), M.steel));
+        // Red disc fill (inner web behind spokes)
+        const fwDisc = S(new THREE.Mesh(new THREE.CylinderGeometry(1.6, 1.6, .55, 20), M.dkRed));
+        flywheelGroup.add(fwDisc);
+        // Hub (steel)
+        const fwHub = S(new THREE.Mesh(new THREE.CylinderGeometry(1.4, 1.4, .9, 24), M.steel));
         flywheelGroup.add(fwHub);
 
-        // Crank pin (eccentric offset on flywheel face)
-        const CRANK_R_FW = 3.5;
-        const crankPin = A(new THREE.Mesh(new THREE.CylinderGeometry(0.35, 0.35, 0.7, 14), M.chrome));
-        crankPin.position.set(0, CRANK_R_FW, 0.5);
+        // Crank pin eccentric (at offset from center on the flywheel face)
+        // In flywheel local coords: (0, -CRANK_R, forwardFace)
+        // After rotation.z=θ: world = FW + (CRANK_R·sinθ, -CRANK_R·cosθ, ..)
+        // Wait — let me be explicit. Flywheel rotation.z = θ.
+        // Local point (px, py) → world (FW.x + px·cosθ - py·sinθ, FW.y + px·sinθ + py·cosθ)
+        // I want pin to move UP when θ=0 (TDC=up). So in local coords: (0, CRANK_R)
+        // That gives world (FW.x - CRANK_R·sinθ, FW.y + CRANK_R·cosθ) ✓
+        const crankPin = S(new THREE.Mesh(new THREE.CylinderGeometry(.38, .38, .8, 14), M.chrome));
+        crankPin.position.set(0, CRANK_R, .5);   // local; will orbit as group rotates
         flywheelGroup.add(crankPin);
 
-        // ── FLYWHEEL BEARING STANDS ──
-        [-2, 2].forEach(z => {
-            // A-frame support
-            const col = A(new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.7, FW_Y - 1, 8), M.green));
-            col.position.set(FW_X, (FW_Y - 1) / 2 + 1, z); scene.add(col);
-            const bear = A(new THREE.Mesh(new THREE.CylinderGeometry(0.9, 0.9, 0.6, 16), M.iron));
-            bear.rotation.x = Math.PI / 2; bear.position.set(FW_X, FW_Y, z); scene.add(bear);
-        });
-
-        // Crankshaft stub (horizontal between the two bearing stands)
-        const crankStub = A(new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 5, 16), M.steel));
-        crankStub.rotation.x = Math.PI / 2; crankStub.position.set(FW_X, FW_Y, 0); scene.add(crankStub);
-
-        // ── CROSSHEAD GUIDE RAILS ──
-        const GUIDE_X = 2, CROSSHEAD_Y = FW_Y;
+        /* ── Crosshead guide rails (horizontal, at y=FW.y) ── */
+        // Rails go from x=FW.x to x=12
         [-1.8, 1.8].forEach(z => {
-            const rail = A(new THREE.Mesh(new THREE.BoxGeometry(14, 0.3, 0.4), M.steel));
-            rail.position.set(GUIDE_X + 5, CROSSHEAD_Y, z); scene.add(rail);
+            const rail = S(new THREE.Mesh(new THREE.BoxGeometry(22, .3, .45), M.steel));
+            rail.position.set(1, FW.y, z); scene.add(rail);
+        });
+        // Rail end supports
+        [[FW.x - 1, 0], [12, 0]].forEach(([x]) => {
+            const sup = S(new THREE.Mesh(new THREE.BoxGeometry(1.2, FW.y - .5, 4), M.green));
+            sup.position.set(x, FW.y / 2, 0); scene.add(sup);
         });
 
-        // ── CROSSHEAD ──
-        const crosshead = A(new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.2, 3.8), M.steel));
-        crosshead.position.set(GUIDE_X + 4, CROSSHEAD_Y, 0); scene.add(crosshead);
-        // Crosshead pin
-        const xhPin = A(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 4.4, 12), M.chrome));
-        xhPin.rotation.x = Math.PI / 2; xhPin.position.set(GUIDE_X + 4, CROSSHEAD_Y, 0); scene.add(xhPin);
+        /* ── Crosshead (slides horizontally on rails) ── */
+        const crosshead = S(new THREE.Mesh(new THREE.BoxGeometry(1.8, 2.2, 3.8), M.steel));
+        crosshead.position.set(0, FW.y, 0); scene.add(crosshead);
+        // Crosshead wrist pin (horizontal, goes through Z)
+        const xhPin = S(new THREE.Mesh(new THREE.CylinderGeometry(.32, .32, 4.4, 12), M.chrome));
+        xhPin.rotation.x = Math.PI / 2; xhPin.position.set(0, FW.y, 0); scene.add(xhPin);
 
-        // ── CONNECTING ROD (flywheel crank pin → crosshead pin) ──
-        const conRod = A(new THREE.Mesh(new THREE.CapsuleGeometry(0.3, 10, 6, 16), M.steel));
-        conRod.position.set(0, FW_Y, 0); scene.add(conRod);
+        /* ── Connecting rod (crank pin → crosshead pin) – updated each frame ── */
+        const conRod = S(new THREE.Mesh(new THREE.CapsuleGeometry(.28, ROD_L * .9, 6, 16), M.steel));
+        conRod.position.set(0, FW.y, 0); scene.add(conRod);
 
-        // ── PISTON ROD (going UP from crosshead to cylinder) ──
-        const pistonRod = A(new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 12, 12), M.chrome));
-        pistonRod.rotation.z = Math.PI / 2; pistonRod.position.set(10, CROSSHEAD_Y, 0); scene.add(pistonRod);
+        /* ── Piston rod (crosshead → piston, near-vertical) ── */
+        // Piston rod connects crosshead to the piston inside cylinder
+        const CYL_X = 10;
+        const pistonRod = S(new THREE.Mesh(new THREE.CylinderGeometry(.22, .22, 1, 12), M.chrome));
+        pistonRod.position.set(CYL_X, FW.y + 3, 0); scene.add(pistonRod);
 
-        // ── CYLINDER PEDESTAL ──
-        const cylPed = A(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 4.5, 12), M.green));
-        cylPed.position.set(11, 4.25, 0); scene.add(cylPed);
-        const cylBase = A(new THREE.Mesh(new THREE.BoxGeometry(5, 0.8, 5), M.green));
-        cylBase.position.set(11, 2.4, 0); scene.add(cylBase);
+        /* ── Cylinder support pedestal ── */
+        const cylPed = S(new THREE.Mesh(new THREE.BoxGeometry(5.5, 1, 5.5), M.green));
+        cylPed.position.set(CYL_X, 2.5, 0); scene.add(cylPed);
+        const cylCol = S(new THREE.Mesh(new THREE.CylinderGeometry(1.2, 1.5, 5, 12), M.green));
+        cylCol.position.set(CYL_X, 5.5, 0); scene.add(cylCol);
 
-        // ── STEAM CYLINDER (vertical, black iron) ──
-        const CYL_X = 11, CYL_Y = 12;
-        const cylBody = A(new THREE.Mesh(new THREE.CylinderGeometry(2.2, 2.2, 8, 24), M.darkIron));
+        /* ── Steam Cylinder (vertical, black iron) ── */
+        const CYL_Y = 13.5;  // center of cylinder
+        const CYL_H = 4.0;   // half-height (piston travel ±CYL_H within cylinder)
+        const CYL_R = 2.5;
+        const cylBody = S(new THREE.Mesh(new THREE.CylinderGeometry(CYL_R, CYL_R, 9, 24), M.dkIron));
         cylBody.position.set(CYL_X, CYL_Y, 0); scene.add(cylBody);
-        // Cylinder head (top)
-        const cylTop = A(new THREE.Mesh(new THREE.CylinderGeometry(2.5, 2.5, 0.7, 24), M.iron));
-        cylTop.position.set(CYL_X, CYL_Y + 4.35, 0); scene.add(cylTop);
-        // Bottom gland / stuffing box
-        const gland = A(new THREE.Mesh(new THREE.CylinderGeometry(2.6, 2.6, 0.8, 24), M.iron));
-        gland.position.set(CYL_X, CYL_Y - 4.4, 0); scene.add(gland);
-        // Cylinder banding rings
+        // Cylinder top head
+        const cylTop = S(new THREE.Mesh(new THREE.CylinderGeometry(CYL_R + .3, CYL_R + .3, .7, 24), M.iron));
+        cylTop.position.set(CYL_X, CYL_Y + 4.85, 0); scene.add(cylTop);
+        // Stuffing box bottom (where piston rod enters)
+        const gland = S(new THREE.Mesh(new THREE.CylinderGeometry(CYL_R + .4, CYL_R + .4, .8, 24), M.iron));
+        gland.position.set(CYL_X, CYL_Y - 4.8, 0); scene.add(gland);
+        // Cylinder bands
         for (let i = 0; i < 4; i++) {
-            const b = A(new THREE.Mesh(new THREE.TorusGeometry(2.3, 0.15, 8, 24), M.iron));
+            const b = S(new THREE.Mesh(new THREE.TorusGeometry(CYL_R + .15, .17, 8, 24), M.iron));
             b.rotation.x = Math.PI / 2; b.position.set(CYL_X, CYL_Y - 3 + i * 2, 0); scene.add(b);
         }
-
-        // Valve chest (slab on side of cylinder)
-        const valveChest = A(new THREE.Mesh(new THREE.BoxGeometry(1.2, 4.5, 3), M.iron));
-        valveChest.position.set(CYL_X - 3.3, CYL_Y, 0); scene.add(valveChest);
-        // Steam port stubs (horizontal brass pipes from valve chest)
-        [-1.5, 1.5].forEach(y => {
-            const port = A(new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.5, 8), M.brass));
-            port.rotation.z = Math.PI / 2; port.position.set(CYL_X - 2.5, CYL_Y + y, 0); scene.add(port);
+        // Valve chest (slab on the -X side of cylinder)
+        const valveChest = S(new THREE.Mesh(new THREE.BoxGeometry(1.4, 5, 3.2), M.iron));
+        valveChest.position.set(CYL_X - 3.9, CYL_Y, 0); scene.add(valveChest);
+        // Steam port stubs (connect chest to cylinder)
+        [-1.8, 1.8].forEach(y => {
+            const port = S(new THREE.Mesh(new THREE.CylinderGeometry(.3, .3, 1.4, 8), M.brass));
+            port.rotation.z = Math.PI / 2; port.position.set(CYL_X - 2.7, CYL_Y + y, 0); scene.add(port);
         });
+        // Pressure gauge on chest
+        const gauge = S(new THREE.Mesh(new THREE.CylinderGeometry(.6, .6, .3, 16), M.brass));
+        gauge.rotation.x = Math.PI / 2; gauge.position.set(CYL_X - 5, CYL_Y + 2, 0); scene.add(gauge);
+        const gFace = new THREE.Mesh(new THREE.CircleGeometry(.55, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: .3 }));
+        gFace.rotation.y = -Math.PI / 2; gFace.position.set(CYL_X - 5.4, CYL_Y + 2, 0); scene.add(gFace);
+        // Drain valve
+        S(scene.add(new THREE.Mesh(new THREE.SphereGeometry(.3, 12, 10), M.brass)) || scene.children[scene.children.length - 1]);
+        scene.children[scene.children.length - 1].position.set(CYL_X + 3, CYL_Y - 5, 0);
 
-        // Steam inlet pipe from top
-        const inletPath = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(CYL_X, CYL_Y + 6, 0),
-            new THREE.Vector3(CYL_X + 2, CYL_Y + 8, 0),
-            new THREE.Vector3(CYL_X + 2, CYL_Y + 10, 0),
-        ]);
-        const inletPipe = new THREE.Mesh(new THREE.TubeGeometry(inletPath, 10, 0.28, 8, false), M.brass);
-        scene.add(inletPipe);
-
-        // ── TOP CURVED BEAM / LINK ──
-        const beamPath = new THREE.CatmullRomCurve3([
-            new THREE.Vector3(-10, 18, 0),
-            new THREE.Vector3(0, 21, 0),
-            new THREE.Vector3(11, 18, 0),
-        ]);
-        const beam = A(new THREE.Mesh(new THREE.TubeGeometry(beamPath, 20, 0.4, 8, false), M.steel));
-        scene.add(beam);
-        // Beam support column
-        const beamCol = A(new THREE.Mesh(new THREE.CylinderGeometry(0.45, 0.55, 21, 10), M.green));
-        beamCol.position.set(0, 10, 0); scene.add(beamCol);
-        // Beam pivot end rods
-        const pivotRod = A(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 4.5, 8), M.chrome));
-        pivotRod.rotation.x = Math.PI / 2; pivotRod.position.set(0, 21, 0); scene.add(pivotRod);
-
-        // ── CENTRIFUGAL GOVERNOR ──
-        const govGroup = new THREE.Group();
-        govGroup.position.set(8, 5, -4);
-        scene.add(govGroup);
-
-        // Governor vertical shaft
-        const govShaft = A(new THREE.Mesh(new THREE.CylinderGeometry(0.18, 0.18, 6, 10), M.steel));
-        govGroup.add(govShaft);
-        const govBase = A(new THREE.Mesh(new THREE.CylinderGeometry(0.8, 1.0, 0.5, 16), M.green));
-        govBase.position.y = -3; govGroup.add(govBase);
-
-        // Spinning arms and balls (governor) - these animate
-        const govArmMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.4, metalness: 0.85 });
-        const govArmGroup = new THREE.Group();
-        govGroup.add(govArmGroup);
-
-        let govAngle = 0;
-        const govArms = [];
-        [-1, 1].forEach(side => {
-            const armGroup = new THREE.Group();
-            // Upper arm (diagonal)
-            const upperArm = A(new THREE.Mesh(new THREE.CapsuleGeometry(0.1, 2.0, 4, 8), govArmMat));
-            upperArm.rotation.z = side * 0.5;
-            upperArm.position.set(side * 0.7, 0.5, 0);
-            armGroup.add(upperArm);
-            // Ball
-            const ball = A(new THREE.Mesh(new THREE.SphereGeometry(0.4, 16, 14), M.brass));
-            ball.position.set(side * 1.4, -0.4, 0);
-            armGroup.add(ball);
-            // Lower link
-            const lowerArm = A(new THREE.Mesh(new THREE.CapsuleGeometry(0.08, 1.5, 4, 8), govArmMat));
-            lowerArm.rotation.z = -side * 0.45;
-            lowerArm.position.set(side * 0.7, -1.5, 0);
-            armGroup.add(lowerArm);
-            govArmGroup.add(armGroup);
-        });
-
-        // Governor bevel gears (decorative)
-        const govGear = A(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.8, 0.4, 16), M.brass));
-        govGear.position.y = 2.0; govGroup.add(govGear);
-
-        // ── PISTON (inside cylinder) ──
-        const piston = A(new THREE.Mesh(new THREE.CylinderGeometry(2.0, 2.0, 1.0, 20), M.steel));
+        /* ── Piston (inside cylinder) ── */
+        const piston = S(new THREE.Mesh(new THREE.CylinderGeometry(CYL_R - .18, CYL_R - .18, 1.0, 22), M.steel));
         piston.position.set(CYL_X, CYL_Y, 0); scene.add(piston);
 
-        // ── MISCELLANEOUS FITTINGS ──
-        // Pressure gauge on valve chest
-        const gauge = A(new THREE.Mesh(new THREE.CylinderGeometry(0.6, 0.6, 0.3, 16), M.brass));
-        gauge.rotation.x = Math.PI / 2; gauge.position.set(CYL_X - 4.2, CYL_Y + 2, 0); scene.add(gauge);
-        const gaugeFace = new THREE.Mesh(new THREE.CircleGeometry(0.55, 16), new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.3, metalness: 0.0 }));
-        gaugeFace.rotation.y = -Math.PI / 2; gaugeFace.position.set(CYL_X - 4.5, CYL_Y + 2, 0); scene.add(gaugeFace);
+        /* ── Top beam / arch (visual, goes from top of cylinder column to flywheel column) ──
+           This is the overhead connecting structure visible in reference image */
+        const beamPath = new THREE.CatmullRomCurve3([
+            new THREE.Vector3(FW.x, FW.y + 7, 0),
+            new THREE.Vector3(-2, FW.y + 9.5, 0),
+            new THREE.Vector3(CYL_X, FW.y + 7, 0),
+        ]);
+        scene.add(new THREE.Mesh(new THREE.TubeGeometry(beamPath, 20, .42, 8, false), M.steel));
+        // Center vertical column supporting beam
+        const beamCol = S(new THREE.Mesh(new THREE.CylinderGeometry(.48, .58, FW.y + 9, 10), M.green));
+        beamCol.position.set(-2, (FW.y + 9) / 2, 0); scene.add(beamCol);
+        // Beam pivot rod
+        const pivotRod = S(new THREE.Mesh(new THREE.CylinderGeometry(.2, .2, 5.5, 8), M.chrome));
+        pivotRod.rotation.x = Math.PI / 2; pivotRod.position.set(-2, FW.y + 9.5, 0); scene.add(pivotRod);
 
-        // Condensate drain (small brass valve below cylinder)
-        const drain = A(new THREE.Mesh(new THREE.SphereGeometry(0.3, 12, 10), M.brass));
-        drain.position.set(CYL_X + 2.6, CYL_Y - 5, 0); scene.add(drain);
+        /* ── Steam inlet pipe ── */
+        const inletPath = new THREE.CatmullRomCurve3([new THREE.Vector3(CYL_X, CYL_Y + 5.5, 0), new THREE.Vector3(CYL_X + 2, CYL_Y + 7, 0), new THREE.Vector3(CYL_X + 2, CYL_Y + 9, 0)]);
+        scene.add(new THREE.Mesh(new THREE.TubeGeometry(inletPath, 10, .28, 8, false), M.brass));
 
-        // Drain pipe
-        const drainPipe = A(new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.1, 1.5, 8), M.brass));
-        drainPipe.position.set(CYL_X + 2.6, CYL_Y - 5.8, 0); scene.add(drainPipe);
+        /* ── Centrifugal Governor ── */
+        const govGroup = new THREE.Group();
+        govGroup.position.set(6, 5.5, -3.5); scene.add(govGroup);
+        // vertical shaft
+        govGroup.add(S(new THREE.Mesh(new THREE.CylinderGeometry(.18, .18, 7, 10), M.steel)));
+        govGroup.add(Object.assign(S(new THREE.Mesh(new THREE.CylinderGeometry(.8, 1, .5, 16), M.green)), { position: new THREE.Vector3(0, -3.5, 0) }));
+        // bevel gear
+        govGroup.add(Object.assign(S(new THREE.Mesh(new THREE.CylinderGeometry(.65, .85, .4, 16), M.brass)), { position: new THREE.Vector3(0, 2.3, 0) }));
+        // spinning arm group (rotates with RPM)
+        const govArmGroup = new THREE.Group();
+        govGroup.add(govArmGroup);
+        const govArmMat = new THREE.MeshStandardMaterial({ color: 0x888888, roughness: .4, metalness: .85 });
+        [-1, 1].forEach(side => {
+            const armGrp = new THREE.Group();
+            const arm = S(new THREE.Mesh(new THREE.CapsuleGeometry(.11, 2.2, 4, 8), govArmMat));
+            arm.rotation.z = side * 0.45; arm.position.set(side * .7, .5, 0); armGrp.add(arm);
+            const ball = S(new THREE.Mesh(new THREE.SphereGeometry(.42, 16, 14), M.brass));
+            ball.position.set(side * 1.5, -0.1, 0); armGrp.add(ball);
+            const lower = S(new THREE.Mesh(new THREE.CapsuleGeometry(.09, 1.5, 4, 8), govArmMat));
+            lower.rotation.z = -side * .4; lower.position.set(side * .65, -1.6, 0); armGrp.add(lower);
+            govArmGroup.add(armGrp);
+        });
 
-        // ── GUI ──
-        const params = { rpm: 90, autoRotate: false };
+        /* ── GUI ── */
+        const params = { rpm: 90, opacity: .18, autoRotate: false, wireframe: false };
         const gui = new GUI({ title: 'Engine Controls' });
         gui.add(params, 'rpm', 0, 350, 1).name('RPM');
+        gui.add(params, 'opacity', 0, 1).name('Glass Opacity').onChange(v => {/* no glass on this engine */ });
         gui.add(params, 'autoRotate').name('Auto Rotate');
+        gui.add(params, 'wireframe').name('Wireframe').onChange(v => {
+            scene.traverse(c => { if (c.isMesh && c.material) c.material.wireframe = v; });
+        });
 
         const dyno = new DynoGraph('dyno-canvas');
         document.getElementById('loading').style.opacity = 0;
 
-        // ── ANIMATION ──
-        let crankAngle = 0, lastTime = 0;
-        const CRANK_R = 4.0;
+        /* ── Animation ── */
+        let crankAngle = 0, lastTime = 0, govAngle = 0;
+        const _up = new THREE.Vector3(0, 1, 0);
 
         function animate(time) {
             requestAnimationFrame(animate);
-            const dt = Math.min((time - lastTime) / 1000, 0.05); lastTime = time;
+            const dt = Math.min((time - lastTime) / 1000, .05); lastTime = time;
             crankAngle += (params.rpm * Math.PI * 2 / 60) * dt;
 
-            // Flywheel rotates around its axle
+            /* ── Flywheel ── */
             flywheelGroup.rotation.z = crankAngle;
 
-            // Crank pin world position
-            const pinX = FW_X + Math.sin(crankAngle) * CRANK_R;
-            const pinY = FW_Y + Math.cos(crankAngle) * CRANK_R;
+            /* Crank pin world pos:
+               Local point (0, CRANK_R) rotated by angle θ around Z:
+               world x = FW.x + 0·cos(θ) - CRANK_R·sin(θ) = FW.x - CRANK_R·sin(θ)
+               world y = FW.y + 0·sin(θ) + CRANK_R·cos(θ) = FW.y + CRANK_R·cos(θ)        */
+            const cpX = FW.x - CRANK_R * Math.sin(crankAngle);
+            const cpY = FW.y + CRANK_R * Math.cos(crankAngle);
 
-            // Crosshead slides horizontally — simplified to match crank X
-            const crossX = FW_X + 14 + Math.sin(crankAngle) * CRANK_R;
-            crosshead.position.x = crossX;
+            /* ── Crosshead slides horizontally at y = FW.y ──
+               Constraint: distance from crank pin to crosshead pin = ROD_L
+               (cx - cpX)² + (FW.y - cpY)² = ROD_L²
+               cx = cpX + sqrt(ROD_L² - (FW.y - cpY)²)   [crosshead is to the RIGHT of flywheel] */
+            const dy = FW.y - cpY;
+            const cx = cpX + Math.sqrt(Math.max(0, ROD_L * ROD_L - dy * dy));
+            crosshead.position.x = cx;
+            xhPin.position.x = cx;
 
-            // Piston rod horizontal
-            pistonRod.position.x = (crossX + CYL_X) / 2;
-            pistonRod.scale.x = (CYL_X - crossX) / 14;
+            /* ── Con-rod spans from crank pin to crosshead ── */
+            const cpVec = new THREE.Vector3(cpX, cpY, 0);
+            const chVec = new THREE.Vector3(cx, FW.y, 0);
+            const dir = new THREE.Vector3().subVectors(chVec, cpVec);
+            const len = dir.length();
+            conRod.position.copy(cpVec).add(dir.clone().multiplyScalar(.5));
+            conRod.quaternion.setFromUnitVectors(_up, dir.clone().normalize());
+            conRod.scale.set(1, len / (ROD_L * .9 + .56), 1);
 
-            // Piston in cylinder follows crosshead X → but cylinder is vertical; use to animate piston Y
-            const pistonY = CYL_Y + Math.sin(crankAngle) * 3;
+            /* ── Piston rod goes from crosshead UP into cylinder ──
+               Crosshead is at (cx, FW.y). Cylinder axis at x=CYL_X.
+               The piston rod is nearly vertical (slight diagonal due to offset).
+               For simplicity: piston Y = FW.y + distance from crosshead up to cylinder.
+               We model it as: the crosshead connects to the piston pin via a long angled rod.
+               Piston: slides vertically in cylinder. Its Y is driven by the crosshead X position.
+               Standard offset crank: piston moves between CYL_Y±CYL_H as x changes. */
+            // Use the crosshead X displacement from center to infer piston position:
+            const xDisp = (cx - (FW.x + ROD_L)) / (CRANK_R); // ~ -1 to +1
+            const pistonY = CYL_Y + CYL_H * 0.85 * xDisp;
             piston.position.y = pistonY;
 
-            // Connecting rod
-            const midX = (pinX + crossX) / 2;
-            const midY = (pinY + CROSSHEAD_Y) / 2;
-            conRod.position.set(midX, midY, 0);
-            const dx = crossX - pinX, dy = CROSSHEAD_Y - pinY;
-            conRod.rotation.z = Math.atan2(dx, dy) - Math.PI / 2;
+            // Piston rod: spans from crosshead wrist pin to piston bottom
+            const xhPos = new THREE.Vector3(cx, FW.y, 0);
+            const pPos = new THREE.Vector3(CYL_X, pistonY - 1.0, 0);
+            const prDir = new THREE.Vector3().subVectors(pPos, xhPos);
+            pistonRod.position.copy(xhPos).add(prDir.clone().multiplyScalar(.5));
+            pistonRod.quaternion.setFromUnitVectors(_up, prDir.clone().normalize());
+            pistonRod.scale.y = prDir.length() * .28; // CylinderGeometry height=1
 
-            // Governor spins and governor arms open/close with RPM
-            const govSpeed = params.rpm * 0.005;
-            govAngle += govSpeed * dt;
+            /* ── Governor ── */
+            govAngle += params.rpm * .008 * dt;
             govArmGroup.rotation.y = govAngle;
-            // Open angle proportional to RPM
-            const openAngle = Math.min(Math.PI * 0.45, params.rpm / 350 * Math.PI * 0.45);
-            govArmGroup.children.forEach((armGrp, i) => {
-                armGrp.rotation.x = (i === 0 ? 1 : -1) * openAngle;
-            });
+            const openA = Math.min(Math.PI * .42, params.rpm / 350 * Math.PI * .42);
+            govArmGroup.children.forEach((ag, i) => { ag.rotation.x = (i === 0 ? 1 : -1) * openA; });
 
-            if (params.autoRotate) controls.azimuthAngle += 0.002;
+            if (params.autoRotate) controls.azimuthAngle += .002;
             controls.update();
             dyno.update(params.rpm);
             renderer.render(scene, camera);
         }
         animate(0);
-
-        window.addEventListener('resize', () => {
-            camera.aspect = innerWidth / innerHeight;
-            camera.updateProjectionMatrix();
-            renderer.setSize(innerWidth, innerHeight);
-        });
+        window.addEventListener('resize', () => { camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); renderer.setSize(innerWidth, innerHeight); });
     </script>
 </body>
 

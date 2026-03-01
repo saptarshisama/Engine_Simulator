@@ -118,7 +118,8 @@
         const controls = new OrbitControls(camera, renderer.domElement);
         controls.enableDamping = true; controls.target.set(0, 4, 0);
 
-        scene.add(new THREE.AmbientLight(0x202820, 1.2));
+        scene.add(new THREE.AmbientLight(0x404840, 2.5));
+        const hemi = new THREE.HemisphereLight(0xffffff, 0x222222, 0.9); scene.add(hemi);
         const sun = new THREE.DirectionalLight(0xfff8f0, 3.0);
         sun.position.set(15, 25, 12); sun.castShadow = true;
         sun.shadow.mapSize.set(2048, 2048);
@@ -395,10 +396,14 @@
         const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.0, 0.4, 0.85);
         bloom.strength = 0.35; composer.addPass(bloom);
 
-        const params = { rpm: 90, autoRotate: false };
+        const params = { rpm: 90, opacity: 0.3, autoRotate: false, wireframe: false };
         const gui = new GUI({ title: 'Engine Controls' });
         gui.add(params, 'rpm', 0, 6500, 10).name('RPM');
+        gui.add(params, 'opacity', 0, 1).name('Glass Opacity').onChange(v => { M.glass.opacity = v; });
         gui.add(params, 'autoRotate').name('Auto Rotate');
+        gui.add(params, 'wireframe').name('Wireframe').onChange(v => {
+            scene.traverse(c => { if (c.isMesh && c.material) c.material.wireframe = v; });
+        });
 
         const dyno = new DynoGraph('dyno-canvas');
         document.getElementById('loading').style.opacity = 0;
