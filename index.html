@@ -4,54 +4,81 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Engine Simulation Platform</title>
+    <title>ENGINESIM::BIOS</title>
     <link rel="stylesheet" href="css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet">
 </head>
 
 <body>
-    <nav id="sidebar" aria-label="Primary navigation">
-        <!-- Header / Toggle -->
-        <div class="rail-header">
-            <div class="logo-area">
-                <span class="logo-text">EngineSim</span>
-            </div>
-            <button id="toggle-btn" class="toggle-btn" aria-label="Collapse sidebar" title="Collapse">
-                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
-                </svg>
-            </button>
-        </div>
+    <div id="app-shell">
 
-        <!-- Search & Profile -->
-        <div class="rail-controls">
-            <div class="search-box">
-                <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <circle cx="11" cy="11" r="8"></circle>
-                    <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
-                </svg>
-                <input type="text" placeholder="Search..." aria-label="Search">
+        <!-- ── Terminal Sidebar ── -->
+        <nav id="sidebar" aria-label="Engine Selection">
+
+            <div class="rail-header">
+                <div class="logo-area">
+                    <span class="logo-text">&gt; ENGINESIM</span>
+                </div>
+                <button id="toggle-btn" class="toggle-btn" aria-label="Collapse sidebar" title="Collapse">
+                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M11 17l-5-5 5-5M18 17l-5-5 5-5" />
+                    </svg>
+                </button>
             </div>
-            <div class="user-profile">
-                <div class="avatar">RR</div>
-                <div class="user-info">
-                    <span class="user-name">Saptarshi Samanta</span>
-                    <span class="user-role">Creator</span>
+
+            <div class="rail-controls">
+                <div class="search-box">
+                    <svg class="search-icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="11" cy="11" r="8"></circle>
+                        <line x1="21" y1="21" x2="16.65" y2="16.65"></line>
+                    </svg>
+                    <input type="text" placeholder="SEARCH_ENGINE..." aria-label="Search">
+                </div>
+                <div class="user-profile">
+                    <div class="avatar">SS</div>
+                    <div class="user-info">
+                        <span class="user-name">Saptarshi Samanta</span>
+                        <span class="user-role">// Creator</span>
+                    </div>
                 </div>
             </div>
+
+            <!-- Engine List -->
+            <ul id="engine-list">
+                <!-- Populated by JS -->
+            </ul>
+
+            <div class="sidebar-footer">
+                SYS::READY | <span id="clock-sidebar">00:00:00</span>
+            </div>
+        </nav>
+
+        <!-- ── Main Content Area ── -->
+        <div id="main-content">
+            <div class="content-header">
+                <span>&gt; SIMULATION_OUTPUT://</span>
+                <span id="active-engine-label">SELECT_ENGINE</span>
+                <span id="clock-main">00:00:00</span>
+            </div>
+            <iframe id="engine-frame" src="" title="Engine Simulation"></iframe>
         </div>
 
-        <!-- Engine List -->
-        <ul id="engine-list">
-            <!-- Engine items populated by JS -->
-        </ul>
-    </nav>
-
-    <div id="main-content">
-        <iframe id="engine-frame" src="" title="Engine Simulation"></iframe>
     </div>
 
     <script src="engines.js"></script>
     <script src="js/main.js"></script>
+    <script>
+        // Clock updater
+        function updateClocks() {
+            const t = new Date().toLocaleTimeString();
+            const s = document.getElementById('clock-sidebar');
+            const m = document.getElementById('clock-main');
+            if (s) s.textContent = t;
+            if (m) m.textContent = t;
+        }
+        setInterval(updateClocks, 1000);
+        updateClocks();
+    </script>
 </body>
 
 </html>

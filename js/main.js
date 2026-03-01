@@ -102,6 +102,10 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         listItem.classList.add('active');
 
+        // Update header label
+        const label = document.getElementById('active-engine-label');
+        if (label) label.textContent = engine.name.toUpperCase().replace(/ /g, '_');
+
         // Load engine
         engineFrame.src = `${engine.path}?t=${Date.now()}`;
     }
