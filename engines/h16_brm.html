@@ -1,0 +1,301 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>H16 Engine — BRM P75</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #050505;
+            color: #eee;
+            font-family: 'Courier New', monospace;
+        }
+
+        #info {
+            position: absolute;
+            top: 10px;
+            width: 100%;
+            text-align: center;
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        #info h1 {
+            font-size: 1.2rem;
+            color: #33ff00;
+            letter-spacing: 2px;
+        }
+
+        #info p {
+            color: #1ea300;
+            font-size: 0.9rem;
+        }
+
+        #loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.5rem;
+            color: #33ff00;
+        }
+
+        #dyno-panel {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            width: 340px;
+            height: 160px;
+            background: rgba(0, 0, 0, 0.85);
+            border: 1px solid #1ea300;
+            padding: 10px;
+            pointer-events: none;
+        }
+
+        #dyno-canvas {
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+    <script
+        type="importmap">{ "imports": { "three": "https://unpkg.com/three@0.160.0/build/three.module.js", "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/" } }</script>
+</head>
+
+<body>
+    <div id="info">
+        <h1>&gt; BRM P75 H-16 // TWO STACKED FLAT-8 ENGINES</h1>
+        <p>16 Cylinders | Two Flat-8 Units | 3.0L | ~400 HP @ 10,500 RPM | F1 1966–1967</p>
+    </div>
+    <div id="loading">&gt; INITIALIZING BRM H16...</div>
+    <div id="dyno-panel"><canvas id="dyno-canvas"></canvas></div>
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+        import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
+        import { UnrealBloomPass } from 'three/addons/postprocessing/UnrealBloomPass.js';
+        import { GUI } from 'three/addons/libs/lil-gui.module.min.js';
+
+        class DynoGraph {
+            constructor(id) {
+                this.canvas = document.getElementById(id);
+                this.ctx = this.canvas.getContext('2d');
+                this.w = this.canvas.width = this.canvas.offsetWidth;
+                this.h = this.canvas.height = this.canvas.offsetHeight;
+                this.hist = [];
+            }
+            update(rpm) {
+                const torque = Math.max(0, 200 * (1 - Math.pow((rpm - 8000) / 7000, 2)));
+                const hp = torque * rpm / 5252;
+                this.hist.push({ rpm, torque, hp });
+                if (this.hist.length > 180) this.hist.shift();
+                this.draw();
+            }
+            draw() {
+                const { ctx, w, h, hist } = this;
+                ctx.clearRect(0, 0, w, h);
+                ctx.strokeStyle = '#1a3300'; ctx.lineWidth = 1;
+                for (let i = 0; i < 4; i++) { ctx.beginPath(); ctx.moveTo(0, h * i / 4); ctx.lineTo(w, h * i / 4); ctx.stroke(); }
+                if (hist.length < 2) return;
+                ['torque', 'hp'].forEach((key, ki) => {
+                    ctx.strokeStyle = ki === 0 ? '#ffaa00' : '#00aaff'; ctx.lineWidth = 2; ctx.beginPath();
+                    hist.forEach((p, i) => {
+                        const x = (i / 180) * w, y = h - (p[key] / 600) * h;
+                        i === 0 ? ctx.moveTo(x, y) : ctx.lineTo(x, y);
+                    }); ctx.stroke();
+                });
+                const cur = hist[hist.length - 1];
+                ctx.fillStyle = '#33ff00'; ctx.font = '13px monospace';
+                ctx.fillText(`RPM: ${Math.round(cur.rpm)}`, 8, 18);
+                ctx.fillStyle = '#ffaa00'; ctx.fillText(`Torque: ${Math.round(cur.torque)} ft-lbs`, 8, 36);
+                ctx.fillStyle = '#00aaff'; ctx.fillText(`Power: ${Math.round(cur.hp)} HP`, 8, 54);
+            }
+        }
+
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x050505);
+        const camera = new THREE.PerspectiveCamera(50, innerWidth / innerHeight, 0.1, 500);
+        camera.position.set(0, 30, 55);
+        const renderer = new THREE.WebGLRenderer({ antialias: true, powerPreference: 'high-performance' });
+        renderer.setPixelRatio(devicePixelRatio);
+        renderer.setSize(innerWidth, innerHeight);
+        renderer.toneMapping = THREE.ACESFilmicToneMapping;
+        document.body.appendChild(renderer.domElement);
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableDamping = true; controls.target.set(0, 0, 0);
+
+        scene.add(new THREE.AmbientLight(0x222222));
+        scene.add(new THREE.HemisphereLight(0xffffff, 0x111111, 0.6));
+        const dir = new THREE.DirectionalLight(0xffffff, 2.5);
+        dir.position.set(20, 30, 15); scene.add(dir);
+        const dir2 = new THREE.DirectionalLight(0x4466ff, 1.0);
+        dir2.position.set(-20, 10, -10); scene.add(dir2);
+        scene.add(new THREE.GridHelper(140, 80, 0x111100, 0x080800));
+
+        const MAT = {
+            block: new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.9, metalness: 0.25, transparent: true, opacity: 0.18 }),
+            steel: new THREE.MeshStandardMaterial({ color: 0xaaaaaa, roughness: 0.45, metalness: 0.85 }),
+            chrome: new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.05, metalness: 1.0 }),
+            exhaust: new THREE.MeshStandardMaterial({ color: 0x996633, roughness: 0.5, metalness: 0.85 }),
+            head: new THREE.MeshStandardMaterial({ color: 0x888888, roughness: 0.5, metalness: 0.5 }),
+            combustion: new THREE.MeshBasicMaterial({ color: 0xff5500, transparent: true, opacity: 0, blending: THREE.AdditiveBlending }),
+        };
+
+        // H-16: Two flat-8 (boxer-8) engines stacked vertically
+        // Each flat-8 has 4 cylinders per side (left & right), horizontally opposed
+        // The two flat-8 units are placed at Y = +UNIT_Y and Y = -UNIT_Y
+
+        const BORE = 1.2, STROKE = 1.8, ROD_L = 5.0, CRANK_R = 0.9;
+        const CYL_OFFSET_X = 7.5; // how far out from center each cylinder extends
+        const CYL_SPACING = 3.2;  // spacing along Z axis
+        const UNIT_Y = 5;         // vertical separation between the two flat-8 units
+
+        const crankGroupTop = new THREE.Group(); scene.add(crankGroupTop); crankGroupTop.position.y = UNIT_Y;
+        const crankGroupBot = new THREE.Group(); scene.add(crankGroupBot); crankGroupBot.position.y = -UNIT_Y;
+
+        const UNIT_CONFIGS = [
+            { group: crankGroupTop, yBase: UNIT_Y, offset: 0 },
+            { group: crankGroupBot, yBase: -UNIT_Y, offset: Math.PI }, // 180° phase offset between units
+        ];
+
+        const allPistons = [];
+
+        UNIT_CONFIGS.forEach(({ group, yBase, offset }) => {
+            // Crankshaft for this unit
+            const spineLen = CYL_SPACING * 4 + 2;
+            const spine = new THREE.Mesh(new THREE.CylinderGeometry(0.5, 0.5, spineLen, 20), MAT.steel);
+            spine.rotation.x = Math.PI / 2; group.add(spine);
+
+            // 4 crank throws per crankshaft (each throw fires L and R cylinder of same position)
+            for (let i = 0; i < 4; i++) {
+                const zPos = (i - 1.5) * CYL_SPACING;
+                const pinAngle = (i * Math.PI / 2) + offset;
+
+                const throwGroup = new THREE.Group();
+                throwGroup.position.z = zPos;
+                const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 1.2, 12), MAT.chrome);
+                pin.rotation.x = Math.PI / 2; pin.position.y = CRANK_R; throwGroup.add(pin);
+                const web = new THREE.Mesh(new THREE.BoxGeometry(0.4, CRANK_R + 0.3, 0.7), MAT.steel);
+                web.position.y = CRANK_R / 2; throwGroup.add(web);
+                group.add(throwGroup);
+
+                // LEFT and RIGHT cylinders for this position
+                [-1, 1].forEach(side => {
+                    const cylX = side * CYL_OFFSET_X;
+
+                    // Glass liner
+                    const liner = new THREE.Mesh(
+                        new THREE.CylinderGeometry(BORE + 0.08, BORE + 0.08, STROKE + 2, 18, 1, true),
+                        new THREE.MeshPhysicalMaterial({ color: 0xaaddff, transmission: 0.9, opacity: 0.25, transparent: true, roughness: 0, metalness: 0, side: THREE.DoubleSide })
+                    );
+                    liner.rotation.z = Math.PI / 2;
+                    liner.position.set(cylX, yBase, zPos);
+                    scene.add(liner);
+
+                    // Head
+                    const head = new THREE.Mesh(new THREE.CylinderGeometry(BORE + 0.5, BORE + 0.5, 0.9, 18), MAT.head);
+                    head.rotation.z = Math.PI / 2;
+                    head.position.set(cylX + side * (STROKE / 2 + 1.2), yBase, zPos);
+                    scene.add(head);
+
+                    // Exhaust stub
+                    const exhStub = new THREE.Mesh(new THREE.CylinderGeometry(0.3, 0.3, 2.5, 8), MAT.exhaust);
+                    exhStub.rotation.x = Math.PI / 2;
+                    exhStub.position.set(cylX + side * (STROKE / 2 + 1.5), yBase + 1.0, zPos);
+                    scene.add(exhStub);
+
+                    // Piston
+                    const piston = new THREE.Mesh(new THREE.CylinderGeometry(BORE - 0.08, BORE - 0.08, 0.6, 18), MAT.chrome);
+                    piston.rotation.z = Math.PI / 2;
+                    piston.position.set(cylX, yBase, zPos);
+                    scene.add(piston);
+
+                    // Flash
+                    const flash = new THREE.Mesh(new THREE.CylinderGeometry(BORE - 0.1, BORE - 0.1, 0.4, 14), MAT.combustion.clone());
+                    flash.rotation.z = Math.PI / 2;
+                    flash.position.set(cylX + side * (STROKE / 2 + 0.8), yBase, zPos);
+                    scene.add(flash);
+
+                    const light = new THREE.PointLight(0xff5500, 0, 6);
+                    light.position.copy(flash.position);
+                    scene.add(light);
+
+                    allPistons.push({
+                        mesh: piston, flash, light, zPos,
+                        side, pinAngle, group, yBase,
+                        baseX: cylX,
+                    });
+                });
+            }
+
+            // Ghost block for the unit
+            const unitBlock = new THREE.Mesh(new THREE.BoxGeometry(CYL_OFFSET_X * 2 + 2, 3.5, CYL_SPACING * 4 + 2), MAT.block);
+            unitBlock.position.y = yBase;
+            scene.add(unitBlock);
+        });
+
+        // Shared output shaft between the two units
+        const outputShaft = new THREE.Mesh(new THREE.CylinderGeometry(0.55, 0.55, 12, 20), MAT.chrome);
+        outputShaft.rotation.x = Math.PI / 2; outputShaft.position.set(CYL_OFFSET_X + 4, 0, 0);
+        scene.add(outputShaft);
+
+        // Connecting gearbox between units
+        const gearbox = new THREE.Mesh(new THREE.BoxGeometry(3, UNIT_Y * 2 + 2, 4), MAT.steel);
+        gearbox.position.set(CYL_OFFSET_X + 3.5, 0, 0); scene.add(gearbox);
+
+        // Post-processing
+        const composer = new EffectComposer(renderer);
+        composer.addPass(new RenderPass(scene, camera));
+        const bloom = new UnrealBloomPass(new THREE.Vector2(innerWidth, innerHeight), 1.0, 0.4, 0.85);
+        bloom.strength = 0.45; composer.addPass(bloom);
+
+        const params = { rpm: 2000, autoRotate: false };
+        const gui = new GUI({ title: 'Engine Controls' });
+        gui.add(params, 'rpm', 0, 11000, 50).name('RPM');
+        gui.add(params, 'autoRotate').name('Auto Rotate');
+
+        const dyno = new DynoGraph('dyno-canvas');
+        document.getElementById('loading').style.opacity = 0;
+
+        let crankAngle = 0, lastTime = 0;
+
+        function animate(time) {
+            requestAnimationFrame(animate);
+            const dt = Math.min((time - lastTime) / 1000, 0.05); lastTime = time;
+            crankAngle += (params.rpm * Math.PI * 2 / 60) * dt;
+
+            crankGroupTop.rotation.z = crankAngle;
+            crankGroupBot.rotation.z = crankAngle + Math.PI; // 180° offset — characteristic H16 quirk
+
+            allPistons.forEach(p => {
+                const theta = crankAngle + p.pinAngle;
+                // Horizontal slider-crank (piston moves in X)
+                const pistonX = p.side * (CRANK_R * Math.cos(theta) + Math.sqrt(Math.max(0, ROD_L * ROD_L - CRANK_R * CRANK_R * Math.sin(theta) * Math.sin(theta))));
+                p.mesh.position.x = p.baseX + pistonX - p.side * ROD_L;
+
+                let phase = ((crankAngle + p.pinAngle) * 180 / Math.PI) % 720;
+                if (phase < 0) phase += 720;
+                const firing = phase >= 0 && phase < 45;
+                p.flash.material.opacity = firing ? 0.85 * (1 - phase / 45) : 0;
+                p.light.intensity = firing ? 5 * (1 - phase / 45) : 0;
+            });
+
+            if (params.autoRotate) controls.azimuthAngle += 0.003;
+            controls.update();
+            dyno.update(params.rpm);
+            composer.render();
+        }
+        animate(0);
+        window.addEventListener('resize', () => {
+            camera.aspect = innerWidth / innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(innerWidth, innerHeight);
+            composer.setSize(innerWidth, innerHeight);
+        });
+    </script>
+</body>
+
+</html>
