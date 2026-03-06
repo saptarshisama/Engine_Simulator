@@ -294,12 +294,10 @@
         flameMesh.position.set(0, 1.85, 0); lampG.add(flameMesh);
 
         /* ── GUI ── */
-        const params = { rpm: 90, opacity: .18, autoRotate: false, wireframe: false };
+        const params = { rpm: 90, autoRotate: false, wireframe: false };
         const gui = new GUI({ title: 'Engine Controls' });
         gui.add(params, 'rpm', 0, 1500, 1).name('RPM');
-        gui.add(params, 'opacity', 0, 1).name('Glass Opacity').onChange(v => {
-            MAT.glass.opacity = v; MAT.glassBulb.opacity = v * .8;
-        });
+
         gui.add(params, 'autoRotate').name('Auto Rotate');
         gui.add(params, 'wireframe').name('Wireframe').onChange(v => {
             scene.traverse(c => { if (c.isMesh && c.material) c.material.wireframe = v; });

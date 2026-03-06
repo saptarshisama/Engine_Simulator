@@ -47,19 +47,5 @@ window.AVAILABLE_ENGINES = [
         "path": "engines/steam.html",
         "description": "Double-acting reciprocating steam engine with boiler, chimney, crosshead, and flywheel.",
         "type": "External Combustion"
-    },
-    {
-        "id": "x8_napier",
-        "name": "Napier Lion (W-12)",
-        "path": "engines/x8_napier.html",
-        "description": "Broad-Arrow 12-cylinder: 3 banks of 4 at 60°. The famous WWII aircraft engine.",
-        "type": "W-Configuration"
-    },
-    {
-        "id": "h16_brm",
-        "name": "BRM H16",
-        "path": "engines/h16_brm.html",
-        "description": "Two stacked Flat-8 engines. 16 cylinders, 3.0L, ~400HP. BRM P75 F1 1966-1967.",
-        "type": "H-Configuration"
     }
 ];
